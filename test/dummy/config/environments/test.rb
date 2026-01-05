@@ -47,8 +47,15 @@ Rails.application.configure do
   # incoming request so you'll need to provide the :host parameter yourself.
   config.action_mailer.default_url_options = { host: "www.example.com" }
 
-  # Print deprecation notices to the stderr.
-  config.active_support.deprecation = :stderr
+  # Print deprecation notices to stderr, but ignore noisy framework deprecations
+  # coming from transitive dependencies (keeps our test output readable).
+  config.active_support.deprecation = [
+    lambda do |message, callstack, *args|
+      next if message.include?("ActiveSupport::Configurable is deprecated")
+
+      ActiveSupport::Deprecation::DEFAULT_BEHAVIORS[:stderr].call(message, callstack, *args)
+    end
+  ]
 
   # Raise exceptions for disallowed deprecations.
   config.active_support.disallowed_deprecation = :raise

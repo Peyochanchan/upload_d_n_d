@@ -1,0 +1,62 @@
+# frozen_string_literal: true
+
+<% module_namespacing do -%>
+class <%= plural_name.camelize %>Controller < ApplicationController
+  include UploadDND::Controllers::Uploadable
+
+  before_action :set_<%= singular_name %>, only: [:show, :edit, :update, :destroy, :attach_file, :remove_file]
+
+  def index
+    @<%= plural_name %> = <%= class_name %>.all
+  end
+
+  def show
+  end
+
+  def new
+    @<%= singular_name %> = <%= class_name %>.new
+  end
+
+  def edit
+  end
+
+  def create
+    @<%= singular_name %> = <%= class_name %>.new(<%= singular_name %>_params)
+
+    # Support pour les uploads temporaires
+    if params[:temp_upload_session_id] == session.id.to_s
+      @<%= singular_name %>.temp_upload_session_id = params[:temp_upload_session_id]
+    end
+
+    if @<%= singular_name %>.save
+      redirect_to @<%= singular_name %>, notice: '<%= class_name %> créé avec succès'
+    else
+      render :new, status: :unprocessable_entity
+    end
+  end
+
+  def update
+    if @<%= singular_name %>.update(<%= singular_name %>_params)
+      redirect_to @<%= singular_name %>, notice: '<%= class_name %> mis à jour avec succès'
+    else
+      render :edit, status: :unprocessable_entity
+    end
+  end
+
+  def destroy
+    @<%= singular_name %>.destroy
+    redirect_to <%= plural_name %>_url, notice: '<%= class_name %> supprimé avec succès'
+  end
+
+  private
+
+  def set_<%= singular_name %>
+    @<%= singular_name %> = <%= class_name %>.find(params[:id])
+  end
+
+  def <%= singular_name %>_params
+    params.require(:<%= singular_name %>).permit(:name) # Ajoutez vos attributs ici
+    # Note: les fichiers uploadés ne sont PAS dans strong params (gérés par UploadDND)
+  end
+end
+<% end -%>

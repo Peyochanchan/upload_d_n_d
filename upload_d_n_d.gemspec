@@ -5,18 +5,16 @@ Gem::Specification.new do |spec|
   spec.version     = UploadDND::VERSION
   spec.authors     = [ "Pierre Cherbero" ]
   spec.email       = [ "cameleon24@outlook.fr" ]
-  spec.homepage    = "TODO"
-  spec.summary     = "TODO: Summary of UploadDND."
-  spec.description = "TODO: Description of UploadDND."
+  spec.homepage    = "https://github.com/Peyochanchan/upload_d_n_d"
+  spec.summary     = "Système de drag & drop sécurisé pour Rails avec ActiveStorage"
+  spec.description = "UploadDND fournit une interface drag & drop élégante et sécurisée pour vos uploads de fichiers dans Rails. Basé sur ActiveStorage, Stimulus et ViewComponent, il offre une validation serveur robuste, un support d'upload temporaire, et une intégration facile avec Pundit/CanCanCan."
   spec.license     = "MIT"
 
-  # Prevent pushing this gem to RubyGems.org. To allow pushes either set the "allowed_push_host"
-  # to allow pushing to a single host or delete this section to allow pushing to any host.
-  spec.metadata["allowed_push_host"] = "TODO: Set to 'http://mygemserver.com'"
-
   spec.metadata["homepage_uri"] = spec.homepage
-  spec.metadata["source_code_uri"] = "TODO: Put your gem's public repo URL here."
-  spec.metadata["changelog_uri"] = "TODO: Put your gem's CHANGELOG.md URL here."
+  spec.metadata["source_code_uri"] = "https://github.com/Peyochanchan/upload_d_n_d"
+  spec.metadata["changelog_uri"] = "https://github.com/Peyochanchan/upload_d_n_d/blob/main/CHANGELOG.md"
+  spec.metadata["bug_tracker_uri"] = "https://github.com/Peyochanchan/upload_d_n_d/issues"
+  spec.metadata["documentation_uri"] = "https://github.com/Peyochanchan/upload_d_n_d/blob/main/README.md"
 
   spec.files = Dir.chdir(File.expand_path(__dir__)) do
     Dir["{app,config,db,lib}/**/*", "MIT-LICENSE", "Rakefile", "README.md"]

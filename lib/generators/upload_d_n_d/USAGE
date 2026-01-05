@@ -1,0 +1,80 @@
+Description:
+    Configure un modèle existant pour utiliser UploadDND avec drag & drop.
+    Génère (si absents) les vues et controllers nécessaires, et affiche
+    des snippets à copier/coller pour configurer votre modèle, controller et routes.
+
+    Fonctionne avec ou sans namespace (User, Admin::Article, Manager::Report, etc.)
+
+Exemples:
+
+    # Configuration basique pour un avatar sur User
+    rails generate upload_d_n_d:model User --attribute=avatar
+
+    # Upload multiple d'images sur Admin::Article
+    rails generate upload_d_n_d:model Admin::Article --attribute=images --multiple
+
+    # PDF avec taille max personnalisée
+    rails generate upload_d_n_d:model Manager::Report --attribute=pdf_file \
+      --content_type=application/pdf --max_size=50
+
+    # Images avec nombre max de fichiers
+    rails generate upload_d_n_d:model Product --attribute=photos --multiple \
+      --max_files=10 --content_type=image/png image/jpeg image/webp
+
+    # Sans générer le controller (si déjà existant)
+    rails generate upload_d_n_d:model User --attribute=avatar --no-controller
+
+    # Sans générer les vues (si déjà existantes)
+    rails generate upload_d_n_d:model User --attribute=avatar --no-views
+
+Ce qui est généré:
+
+    Modèle:
+        - Snippet pour include UploadDND::Uploadable
+        - Snippet pour has_one_attached / has_many_attached
+        - Snippet pour uploadable (validations)
+
+    Controller (optionnel):
+        - Création ou mise à jour du controller
+        - Support pour les uploads temporaires
+        - Actions CRUD de base
+        - Si le controller existe déjà, le générateur affiche les modifications à faire
+
+    Vues (optionnel):
+        - Partial de formulaire avec upload_field
+        - Partial d'affichage des fichiers uploadés
+        - Gestion upload temporaire vs record existant
+
+Options disponibles:
+
+    --attribute=ATTRIBUTE (obligatoire, alias: -a)
+        Nom de l'attribut uploadable (ex: avatar, documents, photos)
+
+    --multiple
+        Permet l'upload de plusieurs fichiers (has_many_attached)
+        Par défaut: false (has_one_attached)
+
+    --content_type=TYPE [TYPE...]
+        Types MIME acceptés (peut être multiple)
+        Par défaut: image/png image/jpeg
+        Exemples:
+            --content_type=application/pdf
+            --content_type=image/png image/jpeg image/webp
+
+    --max_size=SIZE
+        Taille maximale en MB
+        Par défaut: 5
+        Exemple: --max_size=10
+
+    --max_files=NUMBER
+        Nombre maximum de fichiers (seulement pour --multiple)
+        Par défaut: nil (illimité)
+        Exemple: --max_files=5
+
+    --no-controller
+        Ne pas générer/modifier le controller
+        Par défaut: génère le controller
+
+    --no-views
+        Ne pas générer les vues
+        Par défaut: génère les vues

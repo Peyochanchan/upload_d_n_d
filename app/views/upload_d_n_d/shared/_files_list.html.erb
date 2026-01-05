@@ -1,0 +1,68 @@
+<div id="udnd_files_list_<%= attribute_name %>" class="udnd-files-list">
+  <% attachments = record&.send(attribute_name) %>
+  <% if attachments.present? && attachments.attached? %>
+    <ul class="udnd-file-items">
+      <%
+        # Récupère les attachments ActiveStorage (pas les blobs)
+        attachment_list = if attachments.respond_to?(:each)
+          attachments # has_many_attached retourne déjà les attachments
+        else
+          [attachments] # has_one_attached, on met dans un array
+        end
+      %>
+      <% attachment_list.each do |attachment| %>
+        <% blob = attachment.blob %>
+        <li class="udnd-file-item" id="<%= dom_id(attachment) %>">
+          <div class="udnd-file-info">
+            <span class="udnd-file-icon">
+              <% if blob.image? %>
+                <i class="fas fa-file-image"></i>
+              <% elsif blob.content_type == 'application/pdf' %>
+                <i class="fas fa-file-pdf"></i>
+              <% else %>
+                <i class="fas fa-file"></i>
+              <% end %>
+            </span>
+            <div class="udnd-file-details">
+              <span class="udnd-filename"><%= blob.filename.to_s.truncate(30) %></span>
+              <span class="udnd-filesize"><%= number_to_human_size(blob.byte_size) %></span>
+            </div>
+          </div>
+
+          <%
+            # URL de suppression : utilise les routes de l'app hôte
+            # Format attendu : DELETE /:model_name/:id/remove_file
+            delete_url = "/#{record.class.name.underscore.pluralize}/#{record.id}/remove_file?file_id=#{attachment.id}&attribute_name=#{attribute_name}"
+          %>
+
+          <div class="udnd-file-actions">
+            <%# Bouton de prévisualisation (images et PDFs uniquement) %>
+            <% if blob.image? || blob.content_type == 'application/pdf' %>
+              <button type="button"
+                      class="udnd-btn-preview"
+                      data-controller="upload-d-n-d--preview"
+                      data-action="click->upload-d-n-d--preview#open"
+                      data-preview-url="<%= main_app.rails_blob_path(blob, disposition: "inline") %>"
+                      data-preview-filename="<%= blob.filename %>"
+                      data-preview-content-type="<%= blob.content_type %>"
+                      title="Aperçu">
+                <i class="fas fa-eye"></i>
+              </button>
+            <% end %>
+
+            <%# Bouton de suppression %>
+            <button type="button"
+                    class="udnd-btn-remove"
+                    data-action="click->upload-d-n-d--uploads#confirmDelete"
+                    data-url="<%= delete_url %>"
+                    title="Supprimer">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </li>
+      <% end %>
+    </ul>
+  <% else %>
+    <p class="udnd-no-files">Aucun fichier</p>
+  <% end %>
+</div>

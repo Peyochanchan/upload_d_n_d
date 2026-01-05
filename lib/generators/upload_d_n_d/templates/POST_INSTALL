@@ -1,0 +1,82 @@
+===============================================================================
+
+  UploadDND installé avec succès ! 🎉
+
+===============================================================================
+
+Prochaines étapes :
+
+  1. Exécuter les migrations :
+
+     rails db:migrate
+
+  2. (Si pas déjà fait) Installer ActiveStorage :
+
+     rails active_storage:install
+     rails db:migrate
+
+  3. Vérifier que Stimulus est configuré :
+
+     Les contrôleurs Stimulus UploadDND ont été copiés dans :
+       app/javascript/controllers/upload_d_n_d/
+
+     • Si vous utilisez **Importmap** (cas le plus courant) et que votre
+       `app/javascript/controllers/index.js` est auto-généré
+       (vous verrez un commentaire du type "This file is auto-generated...") :
+       mettez à jour le manifest (recommandé) :
+
+          bin/rails stimulus:manifest:update
+
+     • Sinon, si vous voyez "⚠ Manifest Stimulus non trouvé" :
+       a) Installer Stimulus : rails stimulus:install
+       b) Enregistrer manuellement le contrôleur dans app/javascript/controllers/index.js :
+
+          import UploadDNDUploadsController from "./upload_d_n_d/uploads_controller"
+          application.register("upload-d-n-d--uploads", UploadDNDUploadsController)
+          import UploadDNDPreviewController from "./upload_d_n_d/preview_controller"
+          application.register("upload-d-n-d--preview", UploadDNDPreviewController)
+
+  4. (Optionnel) Configurer la politique d''autorisation avec Pundit :
+
+     rails generate upload_d_n_d:policy
+
+     Puis éditez app/policies/upload_d_n_d_temporary_attachment_policy.rb
+
+  5. Utiliser le générateur de modèle (recommandé) :
+
+     rails g upload_d_n_d:model User --attribute=avatar
+     rails g upload_d_n_d:model Project --attribute=documents --multiple --content_type=pdf doc docx
+
+     Le générateur est **non-invasif** : il ne modifie pas automatiquement votre modèle,
+     vos routes, ni vos controllers existants. Il affiche les snippets à copier/coller.
+     Il peut générer des fichiers uniquement s'ils n'existent pas déjà (ex: controller/vues).
+
+     💡 Astuce : Utilisez les extensions de fichiers au lieu des MIME types !
+        --content_type=jpg,png,pdf    (au lieu de image/jpeg image/png application/pdf)
+
+     💡 Styles (Tailwind) : ne pas ajouter d'@import UploadDND dans application.tailwind.css.
+        Préférez un link tag dans votre layout :
+          <%= stylesheet_link_tag 'upload_d_n_d', media: 'all' %>
+
+     💡 Plusieurs attributs sur le même modèle ? Pas de problème !
+        rails g upload_d_n_d:model Project --attribute=main_picture
+        rails g upload_d_n_d:model Project --attribute=photos --multiple
+        → Le générateur détecte et ne duplique pas le concern
+
+     Configuration manuelle (exemple modèle) :
+
+     class User < ApplicationRecord
+       include UploadDND::Uploadable
+
+       has_one_attached :avatar
+       uploadable :avatar,
+                  content_type: ['image/png', 'image/jpeg'],
+                  max_size: 5.megabytes
+     end
+
+  6. Utiliser dans vos vues :
+
+     <%= upload_field :avatar, record: @user %>
+
+
+===============================================================================

@@ -1,0 +1,19 @@
+{
+    "name": "upload_d_n_d",
+    "version": "0.1.0",
+    "type": "module",
+    "main": "app/javascript/upload_d_n_d/index.js",
+    "exports": {
+        ".": "./app/javascript/upload_d_n_d/index.js",
+        "./controllers/*": "./app/javascript/upload_d_n_d/controllers/*.js",
+        "./styles": {
+            "style": "./app/assets/stylesheets/upload_d_n_d/application.css"
+        }
+    },
+    "dependencies": {
+        "@rails/activestorage": "^7.2.3"
+    },
+    "peerDependencies": {
+        "@hotwired/stimulus": "^3.0.0"
+    }
+}

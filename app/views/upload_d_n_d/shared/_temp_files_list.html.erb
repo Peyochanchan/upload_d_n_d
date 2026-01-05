@@ -1,0 +1,54 @@
+<%# app/views/upload_d_n_d/shared/_temp_files_list.html.erb %>
+<div id="udnd_files_list_<%= attribute_name %>" class="udnd-files-list">
+  <% if files.any? %>
+    <ul class="udnd-file-items">
+      <% files.each do |temp_attachment| %>
+        <% blob = temp_attachment.blob.blob %>
+        <li class="udnd-file-item" id="temp_<%= temp_attachment.id %>">
+          <div class="udnd-file-info">
+            <span class="udnd-file-icon">
+              <% if blob.image? %>
+                <i class="fas fa-file-image"></i>
+              <% elsif blob.content_type == 'application/pdf' %>
+                <i class="fas fa-file-pdf"></i>
+              <% else %>
+                <i class="fas fa-file"></i>
+              <% end %>
+            </span>
+            <div class="udnd-file-details">
+              <span class="udnd-filename"><%= blob.filename.to_s.truncate(30) %></span>
+              <span class="udnd-filesize"><%= number_to_human_size(blob.byte_size) %></span>
+            </div>
+          </div>
+
+          <div class="udnd-file-actions">
+            <%# Bouton de prévisualisation (images et PDFs uniquement) %>
+            <% if blob.image? || blob.content_type == 'application/pdf' %>
+              <button type="button"
+                      class="udnd-btn-preview"
+                      data-controller="upload-d-n-d--preview"
+                      data-action="click->upload-d-n-d--preview#open"
+                      data-preview-url="<%= main_app.rails_blob_path(blob, disposition: "inline") %>"
+                      data-preview-filename="<%= blob.filename %>"
+                      data-preview-content-type="<%= blob.content_type %>"
+                      title="Aperçu">
+                <i class="fas fa-eye"></i>
+              </button>
+            <% end %>
+
+            <%# Bouton de suppression %>
+            <button type="button"
+                    class="udnd-btn-remove"
+                    data-action="click->upload-d-n-d--uploads#confirmDelete"
+                    data-url="<%= UploadDND::Engine.routes.url_helpers.temporary_attachment_path(temp_attachment) %>"
+                    title="Supprimer">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </li>
+      <% end %>
+    </ul>
+  <% else %>
+    <p class="udnd-no-files"><%= t('upload_d_n_d.no_files', default: 'Aucun fichier sélectionné') %></p>
+  <% end %>
+</div>

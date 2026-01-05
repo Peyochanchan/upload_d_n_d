@@ -1,15 +1,387 @@
-/*
- * This is a manifest file that'll be compiled into application.css, which will include all the files
- * listed below.
- *
- * Any CSS and SCSS file within this directory, lib/assets/stylesheets, vendor/assets/stylesheets,
- * or any plugin's vendor/assets/stylesheets directory can be referenced here using a relative path.
- *
- * You're free to add application-wide styles to this file and they'll appear at the bottom of the
- * compiled file so the styles you add here take precedence over styles defined in any other CSS/SCSS
- * files in this directory. Styles in this file should be added after the last require_* statement.
- * It is generally better to create a new file per style scope.
- *
- *= require_tree .
- *= require_self
- */
+:root {
+  --udnd-accent-color: #e97451;
+  --udnd-accent-rgb: 233 116 81;
+  --udnd-border-color: #e5e7eb;
+  --udnd-bg: #ffffff;
+  --udnd-bg-hover: #f9fafb;
+  --udnd-text-primary: #111827;
+  --udnd-text-secondary: #6b7280;
+  --udnd-shadow: 0 10px 25px rgba(17, 24, 39, 0.08);
+}
+
+.udnd-container {
+  width: 100%;
+  font-family: inherit;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.udnd-dropzone {
+  border: 1.5px solid rgb(var(--udnd-accent-rgb) / 0.45);
+  border-radius: 0.5rem;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  position: relative;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.92),
+    rgba(255, 255, 255, 0.75)
+  );
+  box-shadow: 0 1px 0 rgba(17, 24, 39, 0.04);
+  transition: transform 0.18s ease, box-shadow 0.18s ease,
+    border-color 0.18s ease, background-color 0.18s ease;
+  cursor: pointer;
+}
+
+.udnd-dropzone:hover {
+  box-shadow: var(--udnd-shadow);
+  transform: translateY(-1px);
+}
+
+.udnd-dropzone:focus-within {
+  outline: none;
+  border-color: var(--udnd-accent-color);
+  box-shadow: 0 0 0 4px rgb(var(--udnd-accent-rgb) / 0.18), var(--udnd-shadow);
+}
+
+.udnd-dropzone.dragover {
+  border-color: var(--udnd-accent-color);
+  background-color: var(--udnd-bg-hover);
+  box-shadow: 0 0 0 4px rgb(var(--udnd-accent-rgb) / 0.18), var(--udnd-shadow);
+  transform: translateY(-1px);
+}
+
+.udnd-input-hidden {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.udnd-dropzone-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.udnd-icon-wrapper {
+  width: 3.25rem;
+  height: 3.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: rgb(var(--udnd-accent-rgb) / 0.12);
+  color: var(--udnd-accent-color);
+  margin-bottom: 0.25rem;
+  box-shadow: 0 1px 0 rgba(17, 24, 39, 0.05);
+}
+
+.udnd-icon-wrapper i {
+  font-size: 1.35rem;
+}
+
+.udnd-text-main {
+  font-weight: 600;
+  color: var(--udnd-text-primary);
+  font-size: 0.95rem;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.udnd-text-sub {
+  color: var(--udnd-text-secondary);
+  font-size: 0.825rem;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.udnd-progress-container {
+  height: 6px;
+  background: rgba(17, 24, 39, 0.08);
+  border-radius: 9999px;
+  margin: 12px auto 0;
+  overflow: hidden;
+  display: none;
+}
+
+.udnd-dropzone.upload-active .udnd-progress-container {
+  display: block;
+}
+
+.udnd-container.upload-active .udnd-progress-container {
+  display: block;
+}
+
+.udnd-progress-bar {
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(233, 116, 81, 0.75),
+    var(--udnd-accent-color)
+  );
+  width: 0%;
+  transition: width 0.1s ease;
+}
+
+/* Files list */
+.udnd-files-list {
+  margin-top: 1rem;
+}
+
+.udnd-file-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.udnd-file-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  border: 1px solid var(--udnd-border-color);
+  border-radius: 0.375rem;
+  margin-bottom: 0.5rem;
+  transition: background-color 0.2s ease;
+}
+
+.udnd-file-item:hover {
+  background-color: var(--udnd-bg-hover);
+}
+
+.udnd-file-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.udnd-file-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.375rem;
+  background-color: var(--udnd-bg-hover);
+  color: var(--udnd-accent-color);
+  font-size: 1.25rem;
+}
+
+.udnd-file-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.udnd-filename {
+  font-weight: 500;
+  color: var(--udnd-text-primary);
+  font-size: 0.875rem;
+}
+
+.udnd-filesize {
+  font-size: 0.75rem;
+  color: var(--udnd-text-secondary);
+}
+
+.udnd-btn-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 0.375rem;
+  background-color: transparent;
+  color: #ef4444;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.udnd-btn-remove:hover {
+  background-color: #fee2e2;
+  transform: scale(1.1);
+}
+
+.udnd-no-files {
+  text-align: center;
+  color: var(--udnd-text-secondary);
+  font-size: 0.875rem;
+  padding: 1rem;
+  margin: 0;
+}
+
+/* === Actions des fichiers === */
+.udnd-file-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.udnd-btn-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 0.375rem;
+  background-color: transparent;
+  color: #27885d;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.udnd-btn-preview:hover {
+  background-color: #d8f3e7;
+  transform: scale(1.1);
+}
+
+/* === Modale de prévisualisation === */
+.udnd-preview-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.udnd-preview-modal.show {
+  width: 100%;
+  opacity: 1;
+}
+
+.udnd-preview-overlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+}
+
+.udnd-preview-container {
+  position: relative;
+  background-color: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  width: 60%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .udnd-preview-container {
+    width: 90%;
+  }
+}
+
+.udnd-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border-bottom: 1px solid var(--udnd-border-color);
+  background-color: #f9fafb;
+}
+
+.udnd-preview-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--udnd-text-primary);
+  max-width: 80%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.udnd-preview-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  background-color: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1.25rem;
+}
+
+.udnd-preview-close:hover {
+  background-color: #e5e7eb;
+  color: #111827;
+}
+
+.udnd-preview-body {
+  padding: 1.5rem;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.udnd-preview-image {
+  display: block;
+  max-width: 100%;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: 0.5rem;
+}
+
+.udnd-preview-pdf {
+  width: 100%;
+  min-height: 80vh;
+  border: none;
+  border-radius: 0.5rem;
+}
+
+.udnd-preview-unsupported {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 3rem;
+  text-align: center;
+  color: var(--udnd-text-secondary);
+}
+
+.udnd-preview-unsupported i {
+  color: var(--udnd-text-secondary);
+  opacity: 0.5;
+}
+
+.udnd-btn-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: var(--udnd-accent-color);
+  color: white;
+  text-decoration: none;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.udnd-btn-download:hover {
+  background-color: #d96342;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
