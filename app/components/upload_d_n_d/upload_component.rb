@@ -151,10 +151,14 @@ module UploadDND
       return [] unless record&.respond_to?(attribute_name)
       attachments = record.send(attribute_name)
 
-      if attachments.respond_to?(:attached?) # Case has_one
-        attachments.attached? ? [ attachments.blob ] : []
-      else # Case has_many
+      if attachments.is_a?(ActiveStorage::Attached::Many)
+        # Case has_many
         attachments.blobs
+      elsif attachments.respond_to?(:attached?)
+        # Case has_one
+        attachments.attached? ? [ attachments.blob ] : []
+      else
+        []
       end
     end
   end

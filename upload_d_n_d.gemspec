@@ -12,7 +12,7 @@ Gem::Specification.new do |spec|
 
   spec.metadata["homepage_uri"] = spec.homepage
   spec.metadata["source_code_uri"] = "https://github.com/Peyochanchan/upload_d_n_d"
-  spec.metadata["changelog_uri"] = "https://github.com/Peyochanchan/upload_d_n_d/blob/main/CHANGELOG.md"
+  spec.metadata["changelog_uri"] = "https://github.com/Peyochanchan/upload_d_n_d/blob/main/docs/CHANGELOG.md"
   spec.metadata["bug_tracker_uri"] = "https://github.com/Peyochanchan/upload_d_n_d/issues"
   spec.metadata["documentation_uri"] = "https://github.com/Peyochanchan/upload_d_n_d/blob/main/README.md"
 

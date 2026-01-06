@@ -37,6 +37,9 @@ RSpec.configure do |config|
   # FactoryBot configuration
   config.include FactoryBot::Syntax::Methods
 
+  # ViewComponent test helpers
+  config.include ViewComponent::TestHelpers, type: :component
+
   # Database Cleaner configuration
   config.before(:suite) do
     DatabaseCleaner.strategy = :transaction

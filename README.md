@@ -156,7 +156,7 @@ rails g upload_d_n_d:model User \
 
 ### Documentation complète
 
-Pour plus d'exemples et de scénarios : voir [GENERATOR_EXAMPLES.md](GENERATOR_EXAMPLES.md)
+Pour plus d'exemples et de scénarios : voir [GENERATOR_EXAMPLES.md](docs/GENERATOR_EXAMPLES.md)
 
 Pour l'aide en ligne de commande :
 ```bash
