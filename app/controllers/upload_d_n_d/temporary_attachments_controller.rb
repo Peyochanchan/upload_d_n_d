@@ -91,6 +91,7 @@ module UploadDND
     def render_temp_file_list(attribute_name)
       files = TemporaryAttachment.for_session(current_session_id)
                                   .for_attribute(attribute_name)
+                                  .with_blobs
 
       if turbo_stream_request?
         render_turbo_stream_replace(

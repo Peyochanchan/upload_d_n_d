@@ -19,6 +19,8 @@ module UploadDND
       retention_days = UploadDND.configuration.temporary_files_retention || 7
       where('created_at < ?', retention_days.days.ago)
     }
+    # Eager load blob attachments to prevent N+1 queries
+    scope :with_blobs, -> { includes(blob_attachment: :blob) }
 
     # Callbacks
     before_destroy :purge_blob

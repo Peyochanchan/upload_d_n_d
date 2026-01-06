@@ -78,17 +78,68 @@ export default class extends Controller {
   }
 
   validateFile(file) {
+    // Validation de la taille
     if (file.size > this.maxSizeValue) {
       this.showAlert("Trop volumineux", `Max: ${this.maxSizeValue / 1048576}MB`, "error")
       return false
     }
-    // Validation basique de l'extension
+
+    // Validation fichier vide
+    if (file.size === 0) {
+      this.showAlert("Fichier vide", "Le fichier ne peut pas être vide", "error")
+      return false
+    }
+
+    // Validation de l'extension
     const ext = "." + file.name.split('.').pop().toLowerCase()
     if (!this.acceptedTypesValue.includes(ext)) {
       this.showAlert("Format invalide", `Acceptés: ${this.acceptedTypesValue}`, "error")
       return false
     }
+
+    // Validation du MIME type (sécurité supplémentaire)
+    // Note: file.type peut être trompé mais c'est une première barrière
+    if (file.type && this.hasAcceptedMimeTypesValue) {
+      const acceptedMimes = this.getAcceptedMimeTypes(this.acceptedTypesValue)
+      if (!acceptedMimes.includes(file.type)) {
+        this.showAlert(
+          "Type de fichier suspect",
+          `Le type réel du fichier ne correspond pas à l'extension`,
+          "error"
+        )
+        return false
+      }
+    }
+
     return true
+  }
+
+  // Mapping extensions → MIME types communs
+  getAcceptedMimeTypes(extensions) {
+    const mimeMap = {
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.gif': 'image/gif',
+      '.webp': 'image/webp',
+      '.pdf': 'application/pdf',
+      '.doc': 'application/msword',
+      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      '.xls': 'application/vnd.ms-excel',
+      '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      '.csv': 'text/csv',
+      '.txt': 'text/plain',
+      '.zip': 'application/zip',
+      '.mp4': 'video/mp4',
+      '.mp3': 'audio/mpeg'
+    }
+
+    const exts = extensions.split(',').map(e => e.trim().toLowerCase())
+    return exts.flatMap(ext => mimeMap[ext] || [])
+  }
+
+  get hasAcceptedMimeTypesValue() {
+    return this.acceptedTypesValue && this.acceptedTypesValue.trim().length > 0
   }
 
   attachBlob(blob) {
