@@ -35,10 +35,8 @@ module UploadDND
         if UploadDND::VersionTracker.update_available?
           notice = UploadDND::VersionTracker.update_notice
           if notice
-            # Log dans Rails
-            Rails.logger.info(notice)
-            # Affiche dans stdout pour que ça apparaisse au démarrage du serveur
-            puts "\n#{notice}\n"
+            # $stderr est plus fiable que puts pour afficher au démarrage
+            $stderr.puts "\n#{notice}\n"
           end
         end
       end
