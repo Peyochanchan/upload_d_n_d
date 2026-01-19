@@ -144,9 +144,8 @@ module UploadDND
       def update_views
         return unless options[:views]
 
-        say "👁️  Génération des vues...", :green
-        create_form_partial
-        create_show_partial
+        say "👁️  Instructions pour les vues", :green
+        show_view_instructions
       end
 
       def add_uploadable_concern_to_controller
@@ -253,45 +252,49 @@ module UploadDND
         template "controller.rb.tt", controller_path
       end
 
-      def create_form_partial
-        # On ne crée pas le partial s'il existe déjà pour ne pas écraser les formulaires existants
-        if File.exist?(File.join(views_path, "_form.html.erb"))
-           say "  ⚠️  Le formulaire existe déjà, ajout manuel requis", :yellow
-           say "  Ajoutez ce code dans votre formulaire :", :cyan
-           say ""
-           say "    <%= upload_field :#{attribute_name}, record: @#{singular_name} %>", :cyan
-           say ""
-        else
-          template "views/_form.html.erb.tt", File.join(views_path, "_form.html.erb")
-        end
-      end
-
-      def create_show_partial
-        uploads_file = File.join(views_path, "_uploads.html.erb")
-
-        if File.exist?(uploads_file)
-          say "  ⚠️  Le partial _uploads.html.erb existe déjà (instructions)", :yellow
-          say "  Ajoutez manuellement cette section pour :#{attribute_name} :", :cyan
-          say ""
-          generate_upload_section_code.each_line { |l| say l.rstrip, :cyan }
-          say ""
-        else
-          say "  → Création de _uploads.html.erb", :green
-          template "views/_uploads.html.erb.tt", uploads_file
-        end
+      def show_view_instructions
+        say ""
+        say "Dans votre formulaire (_form.html.erb ou new.html.erb) :", :yellow
+        say ""
+        say "  <%= form_with model: @#{singular_name} do |form| %>", :cyan
+        say "    <%# Vos autres champs... %>", :cyan
+        say ""
+        say "    <%# Ajoutez le champ d'upload %>", :cyan
+        say "    <%= upload_field :#{attribute_name}, record: @#{singular_name} %>", :cyan
+        say ""
+        say "    <%= form.submit %>", :cyan
+        say "  <% end %>", :cyan
+        say ""
+        say "Dans votre vue show.html.erb (pour afficher les fichiers) :", :yellow
+        say ""
+        say "  <%# La gem fournit automatiquement l'affichage des fichiers via le composant %>", :cyan
+        say "  <%# Les fichiers sont visibles dans le formulaire d'édition (edit.html.erb) %>", :cyan
+        say ""
+        say "  <%# Si vous voulez afficher la liste ailleurs, utilisez : %>", :cyan
+        say "  <%= render 'upload_d_n_d/shared/files_list',", :cyan
+        say "             record: @#{singular_name},", :cyan
+        say "             attribute_name: :#{attribute_name} %>", :cyan
+        say ""
       end
 
       def show_controller_instructions
         say "Ajoutez (ou vérifiez) ces éléments dans #{controller_path} :", :yellow
         say ""
+        say "  # 1. Incluez le concern", :cyan
         say "  include UploadDND::Controllers::Uploadable", :cyan
         say ""
-        say "  # Assurez-vous que votre before_action charge le record pour :attach_file et :remove_file", :cyan
-        say "  # Exemple:", :cyan
-        say "  # before_action :set_#{singular_name}, only: [:show, :edit, :update, :destroy, :attach_file, :remove_file]", :cyan
+        say "  # 2. Ajoutez :attach_file et :remove_file dans le before_action", :cyan
+        say "  before_action :set_#{singular_name}, only: [:show, :edit, :update, :destroy, :attach_file, :remove_file]", :cyan
         say ""
-        say "  # Support upload temporaire (dans create) :", :cyan
-        say "  # @#{singular_name}.temp_upload_session_id = params[:temp_upload_session_id] if params[:temp_upload_session_id] == session.id.to_s", :cyan
+        say "  # 3. Les actions attach_file et remove_file sont fournies par le concern", :cyan
+        say "  # Elles utilisent @#{singular_name} automatiquement", :cyan
+        say ""
+        say "  # 4. Pour les uploads temporaires (formulaire new/create), ajoutez dans l'action create :", :cyan
+        say "  def create", :cyan
+        say "    @#{singular_name} = #{class_name}.new(#{singular_name}_params)", :cyan
+        say "    @#{singular_name}.temp_upload_session_id = params[:temp_upload_session_id] if params[:temp_upload_session_id].present?", :cyan
+        say "    # ...", :cyan
+        say "  end", :cyan
         say ""
       end
 
@@ -305,60 +308,6 @@ module UploadDND
           .map(&:strip)
           .reject(&:empty?)
           .uniq
-      end
-
-      def generate_upload_section_code
-        if options[:multiple]
-          <<~ERB
-
-          <div class="uploads-section">
-            <h3>#{attribute_name.to_s.humanize}</h3>
-
-            <% if @#{singular_name}.#{attribute_name}.attached? %>
-              <%# Multiple fichiers %>
-              <ul class="uploaded-files">
-                <% @#{singular_name}.#{attribute_name}.each do |file| %>
-                  <li>
-                    <% if file.image? %>
-                      <%= image_tag file.variant(resize_to_limit: [200, 200]), alt: file.filename.to_s %>
-                    <% else %>
-                      <i class="file-icon <%= file_icon_class(file.filename.to_s) %>"></i>
-                    <% end %>
-                    <span><%= link_to file.filename, rails_blob_path(file, disposition: "attachment") %></span>
-                    <span class="file-size"><%= number_to_human_size(file.byte_size) %></span>
-                  </li>
-                <% end %>
-              </ul>
-            <% else %>
-              <p class="no-uploads">Aucun fichier uploadé</p>
-            <% end %>
-          </div>
-          ERB
-        else
-          <<~ERB
-
-          <div class="uploads-section">
-            <h3>#{attribute_name.to_s.humanize}</h3>
-
-            <% if @#{singular_name}.#{attribute_name}.attached? %>
-              <%# Un seul fichier %>
-              <div class="uploaded-file">
-                <% if @#{singular_name}.#{attribute_name}.image? %>
-                  <%= image_tag @#{singular_name}.#{attribute_name}.variant(resize_to_limit: [400, 400]), alt: @#{singular_name}.#{attribute_name}.filename.to_s %>
-                <% else %>
-                  <i class="file-icon <%= file_icon_class(@#{singular_name}.#{attribute_name}.filename.to_s) %>"></i>
-                <% end %>
-                <p>
-                  <%= link_to @#{singular_name}.#{attribute_name}.filename, rails_blob_path(@#{singular_name}.#{attribute_name}, disposition: "attachment") %>
-                  <span class="file-size"><%= number_to_human_size(@#{singular_name}.#{attribute_name}.byte_size) %></span>
-                </p>
-              </div>
-            <% else %>
-              <p class="no-uploads">Aucun fichier uploadé</p>
-            <% end %>
-          </div>
-          ERB
-        end
       end
     end
   end

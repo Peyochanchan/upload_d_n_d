@@ -147,12 +147,23 @@ rails g upload_d_n_d:model User \
 | `--content_type` | Extensions de fichiers acceptées | `jpg png` | `--content_type=pdf doc docx` (ou `--content_type=pdf,doc,docx`) |
 | `--max_size` | Taille max en MB | `5` | `--max_size=50` |
 | `--max_files` | Nombre max de fichiers | `nil` | `--max_files=10` |
-| `--no-controller` | Ne pas générer le controller | `false` | `--no-controller` |
-| `--no-views` | Ne pas générer les vues | `false` | `--no-views` |
+| `--no-controller` | Ne pas afficher les instructions controller | `false` | `--no-controller` |
+| `--no-views` | Ne pas afficher les instructions vues | `false` | `--no-views` |
 
 > **Note** : L'option `--content_type` accepte les **extensions de fichiers** (ex: `jpg png pdf`) qui sont automatiquement converties en MIME types.
 > Vous pouvez les passer séparées par **espaces** ou par **virgules** (ex: `pdf,docx,pptx`).
 > Les MIME types restent acceptés si vous préférez (ex: `application/pdf`).
+
+### 📝 Ce que fait le générateur
+
+Le générateur `upload_d_n_d:model` est **non-invasif** et fournit des **instructions claires** pour :
+
+1. **Modèle** : affiche le code à ajouter (concern, association ActiveStorage, configuration uploadable)
+2. **Controller** : affiche les instructions pour inclure le concern `UploadDND::Controllers::Uploadable` et ajouter les actions `attach_file` et `remove_file`
+3. **Routes** : affiche les routes à ajouter dans votre `config/routes.rb`
+4. **Vues** : affiche comment utiliser le helper `upload_field` dans vos formulaires
+
+**Aucun fichier n'est modifié automatiquement**, vous gardez le contrôle total. Les vues (liste de fichiers, preview) sont **fournies par la gem** et n'ont pas besoin d'être générées.
 
 ### Documentation complète
 
@@ -468,12 +479,14 @@ bundle exec rspec
 ## Roadmap
 
 - [x] Prévisualisation (images + PDF) via Stimulus
-- [ ] Compression / optimisation d’images (optionnel, configurable)
+- [x] Internationalisation (FR/EN) des messages serveur
+- [x] Support complet des namespaces (Admin::, Manager::, etc.)
+- [ ] Compression / optimisation d'images (optionnel, configurable)
 - [ ] Scan antivirus (ClamAV ou service externe) avant attachement/persist
 - [ ] Direct Upload (S3/GCS) + support des gros fichiers (UX + retry)
 - [ ] Tests de générateurs (install + model) et amélioration de la couverture
-- [ ] Internationalisation (FR/EN) des messages côté JS + serveur
-- [ ] Guide “production hardening” (rate limiting, CSP, stockage, jobs cleanup)
+- [ ] Internationalisation des messages côté JavaScript
+- [ ] Guide "production hardening" (rate limiting, CSP, stockage, jobs cleanup)
 
 ## Contributing
 
