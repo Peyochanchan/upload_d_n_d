@@ -56,7 +56,7 @@ module UploadDND
         @outdated_files.each do |file|
           desc = UploadDND::VersionTracker::TRACKED_FILES[file][:description]
           say "  • #{file}", :cyan
-          say "    └─ #{desc}", :light_black
+          say "    └─ #{desc}", :white
         end
         say ""
 

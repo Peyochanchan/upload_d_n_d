@@ -34,9 +34,12 @@ module UploadDND
         # Affiche la notification si une mise à jour est disponible
         if UploadDND::VersionTracker.update_available?
           notice = UploadDND::VersionTracker.update_notice
-          Rails.logger.info(notice) if notice
-          # Affiche aussi dans la console pour plus de visibilité
-          puts notice if notice && defined?(Rails::Console)
+          if notice
+            # Log dans Rails
+            Rails.logger.info(notice)
+            # Affiche dans stdout pour que ça apparaisse au démarrage du serveur
+            puts "\n#{notice}\n"
+          end
         end
       end
     end
