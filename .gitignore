@@ -11,3 +11,6 @@
 
 # Coverage reports
 /coverage/
+
+# RSpec test results
+/spec/examples.txt
