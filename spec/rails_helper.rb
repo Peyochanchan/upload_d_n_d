@@ -12,6 +12,13 @@ require 'factory_bot_rails'
 require 'database_cleaner/active_record'
 require 'view_component/test_helpers'
 
+# Turbo (turbo-rails) enregistre normalement ce MIME type. Comme ces specs
+# utilisent `respond_to { |format| format.turbo_stream ... }`, on l'enregistre
+# en test pour éviter un crash même quand la requête est en JSON.
+if defined?(Mime::Type) && Mime::Type.lookup_by_extension(:turbo_stream).nil?
+  Mime::Type.register "text/vnd.turbo-stream.html", :turbo_stream
+end
+
 # Load support files
 Dir[File.expand_path('../support/**/*.rb', __FILE__)].sort.each { |f| require f }
 
