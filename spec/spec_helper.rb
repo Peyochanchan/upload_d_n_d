@@ -4,10 +4,14 @@ require 'simplecov'
 SimpleCov.start 'rails' do
   add_filter '/spec/'
   add_filter '/test/'
+  add_filter '/lib/generators/upload_d_n_d/templates/' # Exclut les templates (code non exécuté)
+  add_filter '/lib/generators/upload_d_n_d/mime_type_helper.rb' # Helper de générateur uniquement
   add_group 'Controllers', 'app/controllers'
   add_group 'Models', 'app/models'
   add_group 'Helpers', 'app/helpers'
   add_group 'Components', 'app/components'
+  add_group 'Generators', 'lib/generators'
+  add_group 'Lib', 'lib/upload_d_n_d'
 end
 
 RSpec.configure do |config|
