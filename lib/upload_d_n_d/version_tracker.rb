@@ -107,7 +107,7 @@ module UploadDND
           #{outdated.map { |f| "║  • #{File.basename(f).ljust(60)} ║" }.join("\n")}
           ║                                                                ║
           ║  Pour mettre à jour (recommandé):                             ║
-          ║  $ rails upload_d_n_d:update                                  ║
+          ║  $ rails g upload_d_n_d:update                                ║
           ║                                                                ║
           ║  ⚠️  Vos modèles et configurations seront préservés            ║
           ╚════════════════════════════════════════════════════════════════╝
