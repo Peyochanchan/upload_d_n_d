@@ -10,7 +10,8 @@ export default class extends Controller {
     recordGid: String,
     multiple: Boolean,
     maxSize: Number,
-    acceptedTypes: String
+    acceptedTypes: String,
+    i18n: Object
   }
 
   connect() {
@@ -48,11 +49,8 @@ export default class extends Controller {
   async processFiles(files) {
     // VALIDATION UX : Si multiple: false, n'accepter qu'un seul fichier
     if (!this.multipleValue && files.length > 1) {
-      this.showAlert(
-        "Un seul fichier autorisé",
-        "Vous ne pouvez uploader qu'un seul fichier pour ce champ.",
-        "warning"
-      )
+      const msg = this.i18nValue.alerts.singleFileOnly
+      this.showAlert(msg.title, msg.text, "warning")
       // Ne traiter que le premier fichier
       files = [files[0]]
     }
@@ -67,7 +65,8 @@ export default class extends Controller {
 
       upload.create((error, blob) => {
         if (error) {
-          this.showAlert("Erreur", "Impossible d'uploader le fichier", "error")
+          const msg = this.i18nValue.alerts.uploadError
+          this.showAlert(msg.title, msg.text, "error")
           this.element.classList.remove('upload-active')
           this.dropzone?.classList.remove('upload-active')
         } else {
@@ -80,20 +79,24 @@ export default class extends Controller {
   validateFile(file) {
     // Validation de la taille
     if (file.size > this.maxSizeValue) {
-      this.showAlert("Trop volumineux", `Max: ${this.maxSizeValue / 1048576}MB`, "error")
+      const msg = this.i18nValue.alerts.fileTooLarge
+      const maxSizeMB = this.maxSizeValue / 1048576
+      this.showAlert(msg.title, msg.text.replace('%{max_size}', maxSizeMB), "error")
       return false
     }
 
     // Validation fichier vide
     if (file.size === 0) {
-      this.showAlert("Fichier vide", "Le fichier ne peut pas être vide", "error")
+      const msg = this.i18nValue.alerts.emptyFile
+      this.showAlert(msg.title, msg.text, "error")
       return false
     }
 
     // Validation de l'extension
     const ext = "." + file.name.split('.').pop().toLowerCase()
     if (!this.acceptedTypesValue.includes(ext)) {
-      this.showAlert("Format invalide", `Acceptés: ${this.acceptedTypesValue}`, "error")
+      const msg = this.i18nValue.alerts.invalidFormat
+      this.showAlert(msg.title, msg.text.replace('%{accepted_types}', this.acceptedTypesValue), "error")
       return false
     }
 
@@ -102,11 +105,8 @@ export default class extends Controller {
     if (file.type && this.hasAcceptedMimeTypesValue) {
       const acceptedMimes = this.getAcceptedMimeTypes(this.acceptedTypesValue)
       if (!acceptedMimes.includes(file.type)) {
-        this.showAlert(
-          "Type de fichier suspect",
-          `Le type réel du fichier ne correspond pas à l'extension`,
-          "error"
-        )
+        const msg = this.i18nValue.alerts.suspiciousType
+        this.showAlert(msg.title, msg.text, "error")
         return false
       }
     }
@@ -176,7 +176,8 @@ export default class extends Controller {
     })
     .catch(error => {
       console.error('Upload failed:', error)
-      this.showAlert("Erreur", "Impossible d'attacher le fichier", "error")
+      const msg = this.i18nValue.alerts.attachError
+      this.showAlert(msg.title, msg.text, "error")
       this.element.classList.remove('upload-active')
       this.dropzone?.classList.remove('upload-active')
     })
@@ -185,10 +186,13 @@ export default class extends Controller {
   async confirmDelete(e) {
     e.preventDefault()
     const url = e.currentTarget.dataset.url
-    
+
+    const msg = this.i18nValue.confirms.deleteFile
     const confirmed = await this.askConfirmation(
-      "Supprimer ?",
-      "Voulez-vous vraiment retirer ce fichier ?"
+      msg.title,
+      msg.text,
+      msg.confirmButton,
+      msg.cancelButton
     )
 
     if (confirmed) {
@@ -208,7 +212,8 @@ export default class extends Controller {
       .then(html => Turbo.renderStreamMessage(html))
       .catch(error => {
         console.error('Delete failed:', error)
-        this.showAlert("Erreur", "Impossible de supprimer le fichier", "error")
+        const errorMsg = this.i18nValue.alerts.deleteError
+        this.showAlert(errorMsg.title, errorMsg.text, "error")
       })
     }
   }
@@ -224,15 +229,15 @@ export default class extends Controller {
     }
   }
 
-  async askConfirmation(title, text) {
+  async askConfirmation(title, text, confirmButtonText, cancelButtonText) {
     // Si SweetAlert2 est disponible, l'utiliser
     if (window.Swal) {
       const result = await Swal.fire({
         title, text, icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
-        confirmButtonText: 'Supprimer',
-        cancelButtonText: 'Annuler'
+        confirmButtonText,
+        cancelButtonText
       })
       return result.isConfirmed
     } else {

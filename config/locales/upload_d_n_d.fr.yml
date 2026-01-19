@@ -1,5 +1,7 @@
 fr:
   upload_d_n_d:
+    drag_and_drop: "Glissez-déposez vos fichiers ici ou cliquez pour sélectionner"
+
     errors:
       blob_not_found: "Fichier non trouvé"
       corrupted: "Le fichier semble corrompu ou modifié"
@@ -22,3 +24,36 @@ fr:
     confirmations:
       delete_file: "Êtes-vous sûr de vouloir supprimer ce fichier ?"
       replace_file: "Un fichier est déjà attaché. Voulez-vous le remplacer ?"
+
+    javascript:
+      alerts:
+        single_file_only:
+          title: "Un seul fichier autorisé"
+          text: "Vous ne pouvez uploader qu'un seul fichier pour ce champ."
+        upload_error:
+          title: "Erreur"
+          text: "Impossible d'uploader le fichier"
+        file_too_large:
+          title: "Trop volumineux"
+          text: "Max: %{max_size}MB"
+        empty_file:
+          title: "Fichier vide"
+          text: "Le fichier ne peut pas être vide"
+        invalid_format:
+          title: "Format invalide"
+          text: "Acceptés: %{accepted_types}"
+        suspicious_type:
+          title: "Type de fichier suspect"
+          text: "Le type réel du fichier ne correspond pas à l'extension"
+        attach_error:
+          title: "Erreur"
+          text: "Impossible d'attacher le fichier"
+        delete_error:
+          title: "Erreur"
+          text: "Impossible de supprimer le fichier"
+      confirms:
+        delete_file:
+          title: "Supprimer ?"
+          text: "Voulez-vous vraiment retirer ce fichier ?"
+          confirm_button: "Supprimer"
+          cancel_button: "Annuler"

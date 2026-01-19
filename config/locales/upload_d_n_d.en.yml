@@ -1,5 +1,7 @@
 en:
   upload_d_n_d:
+    drag_and_drop: "Drag and drop your files here or click to select"
+
     errors:
       blob_not_found: "File not found"
       corrupted: "The file appears to be corrupted or modified"
@@ -22,3 +24,36 @@ en:
     confirmations:
       delete_file: "Are you sure you want to delete this file?"
       replace_file: "A file is already attached. Do you want to replace it?"
+
+    javascript:
+      alerts:
+        single_file_only:
+          title: "Single file only"
+          text: "You can only upload one file for this field."
+        upload_error:
+          title: "Error"
+          text: "Unable to upload file"
+        file_too_large:
+          title: "Too large"
+          text: "Max: %{max_size}MB"
+        empty_file:
+          title: "Empty file"
+          text: "File cannot be empty"
+        invalid_format:
+          title: "Invalid format"
+          text: "Accepted: %{accepted_types}"
+        suspicious_type:
+          title: "Suspicious file type"
+          text: "The actual file type does not match the extension"
+        attach_error:
+          title: "Error"
+          text: "Unable to attach file"
+        delete_error:
+          title: "Error"
+          text: "Unable to delete file"
+      confirms:
+        delete_file:
+          title: "Delete?"
+          text: "Do you really want to remove this file?"
+          confirm_button: "Delete"
+          cancel_button: "Cancel"

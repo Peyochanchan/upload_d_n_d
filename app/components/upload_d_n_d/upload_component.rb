@@ -171,5 +171,53 @@ module UploadDND
         []
       end
     end
+
+    # Retourne les messages i18n pour JavaScript
+    def i18n_messages
+      {
+        alerts: {
+          singleFileOnly: {
+            title: I18n.t('upload_d_n_d.javascript.alerts.single_file_only.title'),
+            text: I18n.t('upload_d_n_d.javascript.alerts.single_file_only.text')
+          },
+          uploadError: {
+            title: I18n.t('upload_d_n_d.javascript.alerts.upload_error.title'),
+            text: I18n.t('upload_d_n_d.javascript.alerts.upload_error.text')
+          },
+          fileTooLarge: {
+            title: I18n.t('upload_d_n_d.javascript.alerts.file_too_large.title'),
+            text: I18n.t('upload_d_n_d.javascript.alerts.file_too_large.text')
+          },
+          emptyFile: {
+            title: I18n.t('upload_d_n_d.javascript.alerts.empty_file.title'),
+            text: I18n.t('upload_d_n_d.javascript.alerts.empty_file.text')
+          },
+          invalidFormat: {
+            title: I18n.t('upload_d_n_d.javascript.alerts.invalid_format.title'),
+            text: I18n.t('upload_d_n_d.javascript.alerts.invalid_format.text')
+          },
+          suspiciousType: {
+            title: I18n.t('upload_d_n_d.javascript.alerts.suspicious_type.title'),
+            text: I18n.t('upload_d_n_d.javascript.alerts.suspicious_type.text')
+          },
+          attachError: {
+            title: I18n.t('upload_d_n_d.javascript.alerts.attach_error.title'),
+            text: I18n.t('upload_d_n_d.javascript.alerts.attach_error.text')
+          },
+          deleteError: {
+            title: I18n.t('upload_d_n_d.javascript.alerts.delete_error.title'),
+            text: I18n.t('upload_d_n_d.javascript.alerts.delete_error.text')
+          }
+        },
+        confirms: {
+          deleteFile: {
+            title: I18n.t('upload_d_n_d.javascript.confirms.delete_file.title'),
+            text: I18n.t('upload_d_n_d.javascript.confirms.delete_file.text'),
+            confirmButton: I18n.t('upload_d_n_d.javascript.confirms.delete_file.confirm_button'),
+            cancelButton: I18n.t('upload_d_n_d.javascript.confirms.delete_file.cancel_button')
+          }
+        }
+      }
+    end
   end
 end
