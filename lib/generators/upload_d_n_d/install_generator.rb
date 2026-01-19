@@ -188,6 +188,15 @@ module UploadDND
         end
       end
 
+      def create_version_file
+        say "Création du fichier de version...", :green
+
+        require_relative "../../upload_d_n_d/version_tracker"
+        UploadDND::VersionTracker.write_version!
+
+        say "✓ Version #{UploadDND::VERSION} enregistrée", :green
+      end
+
       def show_readme
         readme "POST_INSTALL" if File.exist?(source_paths.first + "/POST_INSTALL")
       end

@@ -316,6 +316,11 @@ export default class extends Controller {
   closeModal() {
     if (!this.currentModalContainer) return
 
+    // Résout la Promise pour les alertes simples
+    if (this.currentModalContainer._resolveFunction) {
+      this.currentModalContainer._resolveFunction(true)
+    }
+
     const overlay = this.currentModalContainer.querySelector('.udnd-modal-overlay')
     overlay.classList.remove('udnd-modal-overlay--active')
 
