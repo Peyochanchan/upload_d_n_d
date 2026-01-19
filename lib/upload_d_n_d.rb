@@ -3,6 +3,8 @@
 require "upload_d_n_d/version"
 require "upload_d_n_d/engine"
 require "upload_d_n_d/configuration"
+require "upload_d_n_d/file_validator"
+require "upload_d_n_d/uploadable"
 require "upload_d_n_d/controllers/uploadable"
 
 module UploadDND

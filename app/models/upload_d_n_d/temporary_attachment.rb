@@ -52,14 +52,29 @@ module UploadDND
           source_attr = temp_attachment.attribute_name
           target_attr = attribute_map[source_attr]&.to_s || source_attr
 
-          next unless record.respond_to?(target_attr)
-
-          attachment = record.send(target_attr)
-
-          if attachment.respond_to?(:attach)
-            attachment.attach(temp_attachment.blob.blob) # Double .blob car has_one_attached
+          unless record.respond_to?(target_attr)
+            temp_attachment.destroy
+            next
           end
 
+          attachment = record.send(target_attr)
+          blob_attachment = temp_attachment.blob_attachment
+          unless blob_attachment
+            temp_attachment.destroy
+            next
+          end
+
+          if attachment.is_a?(ActiveStorage::Attached::Many)
+            blob_attachment.update!(record: record, name: target_attr)
+          elsif attachment.is_a?(ActiveStorage::Attached::One)
+            if attachment.attached?
+              temp_attachment.destroy
+              next
+            end
+            blob_attachment.update!(record: record, name: target_attr)
+          end
+
+          temp_attachment.reload
           temp_attachment.destroy
         end
       end
@@ -85,6 +100,10 @@ module UploadDND
     private
 
     def purge_blob
+      # Si l'attachment ActiveStorage a été "déplacé" vers un autre record,
+      # `blob_attachment` sera nil (après reload) -> on ne purge rien.
+      return unless blob_attachment
+
       blob.purge if blob.attached?
     end
   end
