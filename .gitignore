@@ -14,3 +14,6 @@
 
 # RSpec test results
 /spec/examples.txt
+
+# Version tracking file (créé dans les apps clientes)
+.upload_d_n_d_version

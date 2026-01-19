@@ -21,5 +21,24 @@ module UploadDND
         app.config.importmap.draw(root.join("config/importmap.rb"))
       end
     end
+
+    # Vérifie les mises à jour disponibles au démarrage de Rails
+    initializer "upload_d_n_d.check_updates", after: :load_config_initializers do
+      config.after_initialize do
+        # Ne s'exécute qu'en développement pour ne pas polluer les logs en production
+        next unless Rails.env.development?
+
+        # Charge le VersionTracker
+        require_relative "version_tracker"
+
+        # Affiche la notification si une mise à jour est disponible
+        if UploadDND::VersionTracker.update_available?
+          notice = UploadDND::VersionTracker.update_notice
+          Rails.logger.info(notice) if notice
+          # Affiche aussi dans la console pour plus de visibilité
+          puts notice if notice && defined?(Rails::Console)
+        end
+      end
+    end
   end
 end
