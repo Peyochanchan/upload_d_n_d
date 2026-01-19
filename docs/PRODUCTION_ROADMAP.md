@@ -858,6 +858,3 @@ git commit -m "docs: Mise à jour roadmap après sprint 1"
 → Minimum **Sprint 1-2** (3-5 semaines) + tests staging
 
 ---
-
-*Document créé le 2026-01-19 par Claude Code*
-*Basé sur l'analyse du code et comparaison avec l'app hôte original*

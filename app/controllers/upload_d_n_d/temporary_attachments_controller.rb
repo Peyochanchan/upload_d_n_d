@@ -60,7 +60,7 @@ module UploadDND
       render_temp_file_list(attribute_name)
       log_upload_success
     rescue ActiveRecord::RecordInvalid => e
-      render_error("Validation échouée: #{e.message}", :unprocessable_entity)
+      render_error(I18n.t('upload_d_n_d.errors.save_failed', errors: e.message), :unprocessable_entity)
     end
 
     # DELETE /upload_d_n_d/temporary_attachments/:id
@@ -85,7 +85,7 @@ module UploadDND
 
       @temp_attachment = scope.find(params[:id])
     rescue ActiveRecord::RecordNotFound
-      render_error("Fichier non trouvé ou accès refusé", :not_found)
+      render_error(I18n.t('upload_d_n_d.errors.file_not_found_or_denied'), :not_found)
     end
 
     def render_temp_file_list(attribute_name)
@@ -101,9 +101,9 @@ module UploadDND
         )
       else
         respond_to do |format|
-          format.json { render json: { status: 'ok', message: 'Fichier temporaire créé' }, status: :ok }
-          format.html { redirect_back fallback_location: root_path, notice: 'Fichier ajouté' }
-          format.any { render json: { status: 'ok', message: 'Fichier temporaire créé' }, status: :ok }
+          format.json { render json: { status: 'ok', message: I18n.t('upload_d_n_d.success.file_uploaded') }, status: :ok }
+          format.html { redirect_back fallback_location: root_path, notice: I18n.t('upload_d_n_d.success.file_added') }
+          format.any { render json: { status: 'ok', message: I18n.t('upload_d_n_d.success.file_uploaded') }, status: :ok }
         end
       end
     end
@@ -119,7 +119,7 @@ module UploadDND
 
       authorize :upload_d_n_d_temporary_attachment, :create?
     rescue Pundit::NotAuthorizedError
-      render_error("Vous n'êtes pas autorisé à uploader des fichiers", :forbidden)
+      render_error(I18n.t('upload_d_n_d.errors.unauthorized'), :forbidden)
     end
 
     def authorize_delete!
@@ -127,7 +127,7 @@ module UploadDND
 
       authorize :upload_d_n_d_temporary_attachment, :destroy?
     rescue Pundit::NotAuthorizedError
-      render_error("Vous n'êtes pas autorisé à supprimer ce fichier", :forbidden)
+      render_error(I18n.t('upload_d_n_d.errors.unauthorized'), :forbidden)
     end
   end
 end

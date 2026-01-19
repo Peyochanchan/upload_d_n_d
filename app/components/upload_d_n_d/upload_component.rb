@@ -1,6 +1,6 @@
 module UploadDND
   class UploadComponent < ViewComponent::Base
-    attr_reader :record, :attribute_name, :multiple, :accepted_types, :max_size, :user
+    attr_reader :record, :attribute_name, :multiple, :accepted_types, :max_size, :user, :namespace
 
     def initialize(
       attribute_name:,
@@ -8,11 +8,13 @@ module UploadDND
       user: nil,
       multiple: nil,
       accepted_types: nil,
-      max_size: nil
+      max_size: nil,
+      namespace: nil
     )
       @record = record
       @user = user
       @attribute_name = attribute_name
+      @namespace = namespace
 
       # Récupère la config depuis le modèle si disponible, sinon utilise les params ou la config globale
       model_config = get_uploadable_config
@@ -30,7 +32,10 @@ module UploadDND
     end
 
     def model_name
-      record ? record.class.name.underscore.gsub("/", "_") : attribute_name.to_s.singularize
+      return attribute_name.to_s.singularize unless record
+
+      # Convertit "Admin::Article" en "admin_article" (pour les IDs DOM)
+      record.class.name.underscore.tr("/", "_")
     end
 
     # Génère le GlobalID pour le record (fonctionne avec tous les namespaces)
@@ -43,12 +48,18 @@ module UploadDND
 
     # Détermine l'URL d'attachement : soit vers le moteur de la gem, soit vers une route spécifique
     def attach_path
-      if record&.persisted?
-        # Route interne de la gem pour les objets existants
-        UploadDND::Engine.routes.url_helpers.attachments_path
-      else
-        # Route interne pour les fichiers temporaires
-        UploadDND::Engine.routes.url_helpers.temporary_attachments_path
+      action_path = record&.persisted? ? :attachments_path : :temporary_attachments_path
+
+      # Si pas de namespace, on utilise les routes internes de l'engine (plus robuste)
+      return UploadDND::Engine.routes.url_helpers.send(action_path) if namespace.blank?
+
+      # Avec namespace, on utilise polymorphic_path pour supporter les routes de l'app hôte
+      begin
+        action = record&.persisted? ? :attachments : :temporary_attachments
+        helpers.polymorphic_path([ namespace, :upload_d_n_d, action ])
+      rescue NoMethodError, ArgumentError, ViewComponent::HelpersCalledBeforeRenderError
+        # En cas d'erreur (ex: helpers non dispos avant render), fallback sur l'engine
+        UploadDND::Engine.routes.url_helpers.send(action_path)
       end
     end
 
@@ -126,37 +137,36 @@ module UploadDND
     def mime_types_to_extensions(mime_types)
       # Mapping MIME types vers extensions
       mime_to_ext = {
-        'image/jpeg' => '.jpg',
-        'image/png' => '.png',
-        'image/gif' => '.gif',
-        'image/webp' => '.webp',
-        'image/svg+xml' => '.svg',
-        'application/pdf' => '.pdf',
-        'application/msword' => '.doc',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => '.docx',
-        'application/vnd.ms-excel' => '.xls',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => '.xlsx',
-        'application/vnd.ms-powerpoint' => '.ppt',
-        'application/vnd.openxmlformats-officedocument.presentationml.presentation' => '.pptx',
-        'application/vnd.oasis.opendocument.text' => '.odt',
-        'text/plain' => '.txt',
-        'text/csv' => '.csv',
-        'application/zip' => '.zip'
+        "image/jpeg" => ".jpg",
+        "image/png" => ".png",
+        "image/gif" => ".gif",
+        "image/webp" => ".webp",
+        "image/svg+xml" => ".svg",
+        "application/pdf" => ".pdf",
+        "application/msword" => ".doc",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document" => ".docx",
+        "application/vnd.ms-excel" => ".xls",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" => ".xlsx",
+        "application/vnd.ms-powerpoint" => ".ppt",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation" => ".pptx",
+        "application/vnd.oasis.opendocument.text" => ".odt",
+        "text/plain" => ".txt",
+        "text/csv" => ".csv",
+        "application/zip" => ".zip"
       }
 
-      mime_types.map { |mime| mime_to_ext[mime] || mime }.join(',')
+      mime_types.map { |mime| mime_to_ext[mime] || mime }.join(",")
     end
 
     def get_attachments
       return [] unless record&.respond_to?(attribute_name)
-      attachments = record.send(attribute_name)
 
-      if attachments.is_a?(ActiveStorage::Attached::Many)
-        # Case has_many
-        attachments.blobs
-      elsif attachments.respond_to?(:attached?)
-        # Case has_one
-        attachments.attached? ? [ attachments.blob ] : []
+      attachment = record.public_send(attribute_name)
+      case attachment
+      when ActiveStorage::Attached::Many
+        attachment.blobs
+      when ActiveStorage::Attached::One
+        attachment.attached? ? [attachment.blob] : []
       else
         []
       end

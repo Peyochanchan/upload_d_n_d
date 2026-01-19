@@ -10,20 +10,20 @@ module UploadDND
       rescue_from ActiveStorage::IntegrityError do |_e|
         respond_to do |format|
           format.turbo_stream do
-            flash[:alert] = "Le fichier semble corrompu ou modifié"
+            flash[:alert] = I18n.t('upload_d_n_d.errors.corrupted')
             render turbo_stream: turbo_stream.replace("flash_messages", partial: "shared/flashes")
           end
-          format.json { render json: { error: "Le fichier semble corrompu" }, status: :unprocessable_entity }
+          format.json { render json: { error: I18n.t('upload_d_n_d.errors.corrupted') }, status: :unprocessable_entity }
         end
       end
 
       rescue_from ActiveStorage::UnrepresentableError do |_e|
         respond_to do |format|
           format.turbo_stream do
-            flash[:alert] = "Le fichier n'est pas traitable"
+            flash[:alert] = I18n.t('upload_d_n_d.errors.unrepresentable')
             render turbo_stream: turbo_stream.replace("flash_messages", partial: "shared/flashes")
           end
-          format.json { render json: { error: "Le fichier n'est pas traitable" }, status: :unprocessable_entity }
+          format.json { render json: { error: I18n.t('upload_d_n_d.errors.unrepresentable') }, status: :unprocessable_entity }
         end
       end
     end
@@ -34,29 +34,25 @@ module UploadDND
     # @param record [ApplicationRecord] le record sur lequel attacher
     # @param attribute_name [String, Symbol] le nom de l'attribut (ex: :avatar, :documents)
     def attach_upload_d_n_d_files(record, attribute_name)
-      # Récupère les fichiers temporaires de la session pour cet attribut
-      temp_attachments = UploadDND::TemporaryAttachment.for_session(session.id.to_s)
-                                                        .for_attribute(attribute_name.to_s)
-
-      temp_attachments.each do |temp|
-        # Attache le blob au record
-        record.send(attribute_name).attach(temp.blob.blob)
-
-        # Nettoie le fichier temporaire
-        temp.destroy
-      end
+      # Délègue au modèle TemporaryAttachment pour éviter la duplication
+      UploadDND::TemporaryAttachment.attach_to_record(
+        session.id.to_s,
+        record,
+        { attribute_name.to_s => attribute_name }
+      )
     end
 
     # Autorise un record pour update (compatible avec Pundit namespaces)
     #
     # @param record [ApplicationRecord] le record à autoriser
     def authorize_record_for_update(record)
-      return unless defined?(Pundit)
+      # On vérifie si authorize est disponible (Pundit ou autre)
+      return unless respond_to?(:authorize)
 
-      if controller_namespace
-        # Avec namespace : authorize [:namespace, record], :update?
-        namespace_symbol = controller_namespace.underscore.to_sym
-        authorize [namespace_symbol, record], :update?
+      if (ns = controller_namespace)
+        # Avec namespace : authorize [:admin, :internal, record], :update?
+        ns_symbols = ns.underscore.split("/").map(&:to_sym)
+        authorize [ *ns_symbols, record ], :update?
       else
         # Sans namespace : authorize record, :update?
         authorize record, :update?
@@ -69,10 +65,15 @@ module UploadDND
       # Utilise l'instance variable définie par before_action (ex: @project)
       record = instance_variable_get("@#{controller_name.singularize}")
 
-      # Si pas d'instance variable, cherche le record
+      # Si pas d'instance variable, cherche le record via GlobalID (support namespaces)
       unless record
-        model_name = params[:model_name] || controller_name.singularize
-        record = find_record_for_upload(model_name, params[:id])
+        if params[:record_gid].present?
+          record = GlobalID::Locator.locate(params[:record_gid])
+        else
+          # Fallback pour compatibilité (à déprécier)
+          model_name = params[:model_name] || controller_name.singularize
+          record = find_record_for_upload(model_name, params[:id])
+        end
       end
 
       authorize_record_for_update(record)
@@ -85,7 +86,7 @@ module UploadDND
       if record.save
         respond_to do |format|
           format.turbo_stream do
-            flash.now[:notice] = "Fichier ajouté avec succès"
+            flash.now[:notice] = I18n.t('upload_d_n_d.success.file_added')
             render turbo_stream: [
               turbo_stream.replace(
                 "udnd_files_list_#{attribute_name}",
@@ -95,12 +96,12 @@ module UploadDND
               turbo_stream.replace("flash_messages", partial: "shared/flashes")
             ]
           end
-          format.json { render json: { status: 'ok' }, status: :ok }
+          format.json { render json: { status: "ok" }, status: :ok }
         end
       else
         respond_to do |format|
           format.turbo_stream do
-            flash.now[:alert] = record.errors.full_messages.join(", ")
+            flash.now[:alert] = I18n.t('upload_d_n_d.errors.save_failed', errors: record.errors.full_messages.join(", "))
             render turbo_stream: turbo_stream.replace("flash_messages", partial: "shared/flashes")
           end
           format.json { render json: { error: record.errors.full_messages }, status: :unprocessable_entity }
@@ -114,10 +115,15 @@ module UploadDND
       # Utilise l'instance variable définie par before_action (ex: @project)
       record = instance_variable_get("@#{controller_name.singularize}")
 
-      # Si pas d'instance variable, cherche le record
+      # Si pas d'instance variable, cherche le record via GlobalID (support namespaces)
       unless record
-        model_name = params[:model_name] || controller_name.singularize
-        record = find_record_for_upload(model_name, params[:id])
+        if params[:record_gid].present?
+          record = GlobalID::Locator.locate(params[:record_gid])
+        else
+          # Fallback pour compatibilité (à déprécier)
+          model_name = params[:model_name] || controller_name.singularize
+          record = find_record_for_upload(model_name, params[:id])
+        end
       end
 
       authorize_record_for_update(record)
@@ -132,7 +138,7 @@ module UploadDND
 
         respond_to do |format|
           format.turbo_stream do
-            flash.now[:notice] = "Fichier supprimé avec succès"
+            flash.now[:notice] = I18n.t('upload_d_n_d.success.file_removed')
             render turbo_stream: [
               turbo_stream.replace(
                 "udnd_files_list_#{attribute_name}",
@@ -142,15 +148,15 @@ module UploadDND
               turbo_stream.replace("flash_messages", partial: "shared/flashes")
             ]
           end
-          format.json { render json: { status: 'ok' }, status: :ok }
+          format.json { render json: { status: "ok" }, status: :ok }
         end
       else
         respond_to do |format|
           format.turbo_stream do
-            flash.now[:alert] = "Fichier non trouvé ou accès refusé"
+            flash.now[:alert] = I18n.t('upload_d_n_d.errors.file_not_found_or_denied')
             render turbo_stream: turbo_stream.replace("flash_messages", partial: "shared/flashes")
           end
-          format.json { render json: { error: "Fichier non trouvé" }, status: :not_found }
+          format.json { render json: { error: I18n.t('upload_d_n_d.errors.blob_not_found') }, status: :not_found }
         end
       end
     end
@@ -159,14 +165,34 @@ module UploadDND
 
     # Retourne le namespace du controller si présent
     # Ex: Admin::ProjectsController => "Admin"
+    # Ex: Admin::Internal::ProjectsController => "Admin::Internal"
     def controller_namespace
       controller_class = self.class.name.to_s
       namespace_parts = controller_class.split("::")
-      namespace_parts.length > 1 ? namespace_parts.first : nil
+      if namespace_parts.length > 1
+        namespace_parts[0...-1].join("::")
+      else
+        nil
+      end
     end
 
+    # @deprecated Utilisez GlobalID à la place (params[:record_gid])
     # Trouve le record pour l'upload
+    # Supporte les namespaces (ex: "admin_article" -> Admin::Article)
     def find_record_for_upload(model_name, record_id)
+      # Tente de détecter le namespace depuis le controller
+      if (ns = controller_namespace)
+        # Convertit "article" en "Admin::Article" si on est dans Admin::ArticlesController
+        class_name = "#{ns}::#{model_name.classify}"
+        begin
+          model_class = class_name.constantize
+          return model_class.find(record_id)
+        rescue NameError
+          # Fallback si le namespace ne contient pas ce modèle
+        end
+      end
+
+      # Fallback standard (sans namespace)
       model_class = model_name.classify.constantize
       model_class.find(record_id)
     end

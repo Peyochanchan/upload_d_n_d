@@ -153,7 +153,7 @@ RSpec.describe UploadDND::AttachmentsController, type: :controller do
         }, format: :json
 
         expect(response).to have_http_status(:not_found)
-        expect(JSON.parse(response.body)['error']).to include('non trouvé')
+        expect(JSON.parse(response.body)['error']).to eq(I18n.t('upload_d_n_d.errors.blob_not_found'))
       end
 
       it 'returns error when attribute does not exist on record' do
@@ -164,7 +164,7 @@ RSpec.describe UploadDND::AttachmentsController, type: :controller do
         }, format: :json
 
         expect(response).to have_http_status(:unprocessable_content)
-        expect(JSON.parse(response.body)['error']).to include('inexistant')
+        expect(JSON.parse(response.body)['error']).to eq(I18n.t('upload_d_n_d.errors.invalid_attribute', attribute: 'nonexistent_attribute'))
       end
     end
 

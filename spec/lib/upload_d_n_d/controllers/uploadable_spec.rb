@@ -290,7 +290,7 @@ RSpec.describe UploadableTestController, type: :controller do
         }, format: :json
 
         expect(response).to have_http_status(:not_found)
-        expect(JSON.parse(response.body)['error']).to include('non trouvé')
+        expect(JSON.parse(response.body)['error']).to eq(I18n.t('upload_d_n_d.errors.blob_not_found'))
       end
     end
 
@@ -316,7 +316,7 @@ RSpec.describe UploadableTestController, type: :controller do
         get :index, format: :json
 
         expect(response).to have_http_status(:unprocessable_entity)
-        expect(JSON.parse(response.body)['error']).to include('corrompu')
+        expect(JSON.parse(response.body)['error']).to eq(I18n.t('upload_d_n_d.errors.corrupted'))
       end
     end
 
@@ -327,7 +327,7 @@ RSpec.describe UploadableTestController, type: :controller do
         get :index, format: :json
 
         expect(response).to have_http_status(:unprocessable_entity)
-        expect(JSON.parse(response.body)['error']).to include('traitable')
+        expect(JSON.parse(response.body)['error']).to eq(I18n.t('upload_d_n_d.errors.unrepresentable'))
       end
     end
   end
@@ -377,11 +377,26 @@ RSpec.describe Admin::Nested::ProjectsController, type: :controller do
   end
 
   describe '#controller_namespace' do
-    it 'returns first namespace for deeply nested controllers' do
+    it 'returns full namespace for deeply nested controllers' do
       get :test_namespace
 
       namespace = JSON.parse(response.body)['namespace']
-      expect(namespace).to eq('Admin')
+      expect(namespace).to eq('Admin::Nested')
+    end
+  end
+
+  describe '#authorize_record_for_update' do
+    let(:user) { User.create!(name: 'Test', email: 'test@example.com') }
+
+    before do
+      stub_const('Pundit', Module.new)
+      allow(controller).to receive(:authorize)
+    end
+
+    it 'calls authorize with all namespace parts' do
+      expect(controller).to receive(:authorize).with([ :admin, :nested, user ], :update?)
+
+      controller.send(:authorize_record_for_update, user)
     end
   end
 end

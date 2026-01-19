@@ -1,0 +1,24 @@
+en:
+  upload_d_n_d:
+    errors:
+      blob_not_found: "File not found"
+      corrupted: "The file appears to be corrupted or modified"
+      unrepresentable: "The file cannot be processed"
+      unauthorized: "You are not authorized to update this file"
+      invalid_type: "Invalid file type. Accepted formats: %{types}"
+      too_large: "File exceeds maximum size of %{max_size}"
+      max_files_exceeded: "You cannot add more than %{max} files"
+      file_not_found_or_denied: "File not found or access denied"
+      save_failed: "Save failed: %{errors}"
+      invalid_attribute: "Attribute %{attribute} does not exist"
+      not_active_storage_attachment: "Attribute %{attribute} is not an ActiveStorage attachment"
+      record_gid_required: "The record_gid parameter is required to attach to an existing record. Use /temporary_attachments for uploads without a record."
+
+    success:
+      file_added: "File added successfully"
+      file_removed: "File removed successfully"
+      file_uploaded: "File uploaded successfully"
+
+    confirmations:
+      delete_file: "Are you sure you want to delete this file?"
+      replace_file: "A file is already attached. Do you want to replace it?"

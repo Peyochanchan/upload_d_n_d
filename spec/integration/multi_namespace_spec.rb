@@ -161,6 +161,32 @@ RSpec.describe 'Multi-namespace support', type: :integration do
       expect(component.record_gid).to be_present
       expect(component.record_gid).to include('Manager::Report')
     end
+
+    it 'génère attach_path correct sans namespace' do
+      component = UploadDND::UploadComponent.new(
+        attribute_name: :avatar,
+        record: user
+      )
+
+      # On s'attend à ce que ça appelle polymorphic_path([:upload_d_n_d, :attachments]) ou fallback
+      # Dans le dummy app, le mount est à /upload_d_n_d
+      expect(component.attach_path).to eq('/upload_d_n_d/attachments')
+    end
+
+    it 'génère attach_path correct avec un namespace' do
+      component = UploadDND::UploadComponent.new(
+        attribute_name: :images,
+        record: article,
+        namespace: :admin
+      )
+
+      # Mock du helper pour simuler une route namespacée
+      mock_helpers = double('helpers')
+      allow(component).to receive(:helpers).and_return(mock_helpers)
+      expect(mock_helpers).to receive(:polymorphic_path).with([ :admin, :upload_d_n_d, :attachments ]).and_return('/admin/upload_d_n_d/attachments')
+
+      expect(component.attach_path).to eq('/admin/upload_d_n_d/attachments')
+    end
   end
 
   describe 'Controller avec GlobalID' do
