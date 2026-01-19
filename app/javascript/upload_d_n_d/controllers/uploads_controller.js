@@ -220,30 +220,126 @@ export default class extends Controller {
 
   // --- Helpers UI ---
   showAlert(title, text, icon) {
-    // Si SweetAlert2 est disponible, l'utiliser
-    if (window.Swal) {
-      Swal.fire({ title, text, icon, confirmButtonColor: 'var(--udnd-accent-color)' })
-    } else {
-      // Utiliser l'alert natif du navigateur
-      alert(`${title}\n${text}`)
-    }
+    // Utilise le système de modales natif
+    this.createModal(title, text, icon, false)
   }
 
   async askConfirmation(title, text, confirmButtonText, cancelButtonText) {
-    // Si SweetAlert2 est disponible, l'utiliser
-    if (window.Swal) {
-      const result = await Swal.fire({
-        title, text, icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        confirmButtonText,
-        cancelButtonText
+    // Utilise le système de modales natif pour la confirmation
+    return this.createModal(title, text, 'warning', true, confirmButtonText, cancelButtonText)
+  }
+
+  // Crée une modale (alert ou confirm)
+  createModal(title, message, type, isConfirm, confirmText = "OK", cancelText = "Cancel") {
+    return new Promise((resolve) => {
+      const modalHTML = `
+        <div class="udnd-modal-overlay" data-action="click->upload-d-n-d--uploads#closeModalOnOverlay">
+          <div class="udnd-modal" data-action="click->upload-d-n-d--uploads#stopPropagation">
+            <div class="udnd-modal-header">
+              <div class="udnd-modal-icon udnd-modal-icon--${type}">
+                ${this.getIcon(type)}
+              </div>
+            </div>
+            <div class="udnd-modal-body">
+              <h3 class="udnd-modal-title">${title}</h3>
+              <p class="udnd-modal-message">${message}</p>
+            </div>
+            <div class="udnd-modal-footer">
+              ${isConfirm ? `
+                <button type="button" class="udnd-modal-button udnd-modal-button--cancel" data-action="click->upload-d-n-d--uploads#cancelModal">
+                  ${cancelText}
+                </button>
+                <button type="button" class="udnd-modal-button udnd-modal-button--confirm" data-action="click->upload-d-n-d--uploads#confirmModal">
+                  ${confirmText}
+                </button>
+              ` : `
+                <button type="button" class="udnd-modal-button udnd-modal-button--primary" data-action="click->upload-d-n-d--uploads#closeModal">
+                  ${confirmText}
+                </button>
+              `}
+            </div>
+          </div>
+        </div>
+      `
+
+      const container = document.createElement('div')
+      container.innerHTML = modalHTML
+      container._resolveFunction = resolve
+      this.currentModalContainer = container
+
+      document.body.appendChild(container)
+
+      // Anime l'ouverture
+      requestAnimationFrame(() => {
+        container.querySelector('.udnd-modal-overlay').classList.add('udnd-modal-overlay--active')
       })
-      return result.isConfirmed
-    } else {
-      // Utiliser le confirm natif du navigateur
-      return confirm(`${title}\n${text}`)
+
+      // Gestion Escape
+      this.modalKeydownHandler = (e) => {
+        if (e.key === 'Escape') {
+          this.cancelModal()
+        }
+      }
+      document.addEventListener('keydown', this.modalKeydownHandler)
+
+      // Pour les alerts (pas de resolve), résoudre immédiatement
+      if (!isConfirm) {
+        // L'alert se ferme juste, pas besoin de retourner une valeur
+      }
+    })
+  }
+
+  getIcon(type) {
+    const icons = {
+      info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+      success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+      warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+      error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>'
     }
+    return icons[type] || icons.info
+  }
+
+  confirmModal() {
+    if (this.currentModalContainer?._resolveFunction) {
+      this.currentModalContainer._resolveFunction(true)
+    }
+    this.closeModal()
+  }
+
+  cancelModal() {
+    if (this.currentModalContainer?._resolveFunction) {
+      this.currentModalContainer._resolveFunction(false)
+    }
+    this.closeModal()
+  }
+
+  closeModal() {
+    if (!this.currentModalContainer) return
+
+    const overlay = this.currentModalContainer.querySelector('.udnd-modal-overlay')
+    overlay.classList.remove('udnd-modal-overlay--active')
+
+    // Supprime du DOM après l'animation
+    setTimeout(() => {
+      this.currentModalContainer?.remove()
+      this.currentModalContainer = null
+    }, 300)
+
+    // Nettoie le listener Escape
+    if (this.modalKeydownHandler) {
+      document.removeEventListener('keydown', this.modalKeydownHandler)
+      this.modalKeydownHandler = null
+    }
+  }
+
+  closeModalOnOverlay(e) {
+    if (e.target.classList.contains('udnd-modal-overlay')) {
+      this.cancelModal()
+    }
+  }
+
+  stopPropagation(e) {
+    e.stopPropagation()
   }
 
   // Callback obligatoire pour DirectUpload (ActiveStorage)
