@@ -21,4 +21,7 @@ Gem::Specification.new do |spec|
   end
 
   spec.add_dependency "rails", ">= 7.2.3"
+
+  # Dépendance optionnelle pour le rate limiting
+  spec.add_development_dependency "rack-attack", "~> 6.7"
 end

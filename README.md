@@ -80,6 +80,11 @@ UploadDND.configure do |config|
   # Durée de conservation des fichiers temporaires (en jours)
   config.temporary_files_retention = 7
 
+  # Rate limiting (protection contre les abus)
+  config.rate_limit_enabled = true         # Activer/désactiver le rate limiting
+  config.rate_limit_max_requests = 10      # Nombre max de requêtes
+  config.rate_limit_period = 60            # Période en secondes
+
   # Callbacks personnalisés
   config.on_upload_success = ->(blob, user) {
     Rails.logger.info "File uploaded: #{blob.filename} by #{user&.email}"

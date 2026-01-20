@@ -10,9 +10,13 @@ module UploadDND
   # - Gestion des erreurs et logging
   # - Helpers de rendu (Turbo Streams, JSON, HTML)
   # - Sécurité (CSRF, validation de signature, sanitisation)
+  # - Rate limiting (contrôle du taux de requêtes)
   class BaseAttachmentsController < ActionController::Base
     # Inclure Pundit si disponible
     include Pundit::Authorization if defined?(Pundit)
+
+    # Inclure le rate limiting
+    include UploadDND::RateLimiting
 
     # Protection CSRF (désactivée uniquement en test)
     skip_before_action :verify_authenticity_token, if: -> { Rails.env.test? }
