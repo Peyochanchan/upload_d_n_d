@@ -14,6 +14,7 @@ RSpec.describe UploadDND::BaseAttachmentsController, type: :controller do
     UploadDND.configure do |config|
       config.require_authentication = false
       config.authorization_adapter = nil
+      config.accepted_types = nil
     end
     allow(controller).to receive(:session).and_return({ id: session_id })
   end

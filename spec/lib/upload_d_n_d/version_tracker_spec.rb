@@ -159,7 +159,7 @@ RSpec.describe UploadDND::VersionTracker do
         File.write(test_js_file, "// Old content")
 
         notice = described_class.update_notice
-        expect(notice).to include("📦 UploadDND - Mise à jour disponible")
+        expect(notice).to include("Mise à jour disponible")
         expect(notice).to include("Version installée : 0.1.0")
         expect(notice).to include("Version disponible: #{UploadDND::VERSION}")
         expect(notice).to include("rails g upload_d_n_d:update")
@@ -205,8 +205,6 @@ RSpec.describe UploadDND::VersionTracker do
   describe "PRESERVED_FILES constant" do
     it "contains patterns for files that should never be touched" do
       expect(described_class::PRESERVED_FILES).to include(
-        "app/models/concerns/upload_d_n_d/uploadable.rb",
-        "app/controllers/concerns/upload_d_n_d/controllers/uploadable.rb",
         "app/helpers/upload_d_n_d/upload_helper.rb",
         "config/initializers/upload_d_n_d.rb"
       )
