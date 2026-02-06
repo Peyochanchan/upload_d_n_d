@@ -71,11 +71,9 @@ module UploadDND
         model_content = File.read(model_path)
 
         already_has_concern = model_content.include?("include UploadDND::Uploadable")
-        association_type = options[:multiple] ? "has_many_attached" : "has_one_attached"
-        already_has_association = model_content.match?(/#{association_type}\s+:#{attribute_name}/)
         already_has_uploadable = model_content.match?(/uploadable\s+:#{attribute_name}/)
 
-        if already_has_concern && already_has_association && already_has_uploadable
+        if already_has_concern && already_has_uploadable
           say "  ✓ Le modèle semble déjà configuré pour :#{attribute_name}", :yellow
           return
         end
@@ -86,13 +84,13 @@ module UploadDND
         unless already_has_concern
           say "  include UploadDND::Uploadable", :cyan
         end
-        unless already_has_association
-          say "  #{association_type} :#{attribute_name}", :cyan
-        end
         unless already_has_uploadable
           uploadable_attribute_code.each_line { |l| say l.rstrip, :cyan }
         end
 
+        say ""
+        say "  Note: uploadable déclare automatiquement has_one_attached / has_many_attached.", :yellow
+        say "  Inutile de le déclarer séparément.", :yellow
         say ""
       end
 
@@ -165,7 +163,7 @@ module UploadDND
         say "  Modèle: #{class_name}"
         say "  Namespace: #{namespace_path}" if namespaced?
         say "  Attribut: #{attribute_name}"
-        say "  Type: #{options[:multiple] ? 'has_many_attached' : 'has_one_attached'}"
+        say "  Type: #{options[:multiple] ? 'multiple' : 'simple'}"
         say "  Extensions: #{extensions.join(', ')}"
         say "  MIME types: #{mime_types.join(', ')}"
         say "  Taille max: #{options[:max_size]}MB"
@@ -221,25 +219,18 @@ module UploadDND
       end
 
       def uploadable_attribute_code
-        max_files_option = options[:max_files] ? ", max_files: #{options[:max_files]}" : ""
+        max_files_option = options[:max_files] ? ",\n             max_files: #{options[:max_files]}" : ""
+        multiple_option = options[:multiple] ? ",\n             multiple: true" : ""
 
-        # Convertit les extensions en MIME types
-        mime_types = convert_to_mime_types(normalized_content_types)
+        # Utilise accept: avec symboles (nouvelle API v0.4.0)
+        extensions = normalized_content_types.map { |ext| ":#{ext.delete_prefix('.')}" }
 
         <<~RUBY.indent(2)
 
           uploadable :#{attribute_name},
-                     content_type: #{mime_types.inspect},
-                     max_size: #{options[:max_size]}.megabytes#{max_files_option}
-        RUBY
-      end
-
-      def active_storage_code
-        association_type = options[:multiple] ? "has_many_attached" : "has_one_attached"
-
-        <<~RUBY.indent(2)
-
-          #{association_type} :#{attribute_name}
+                     accept: [#{extensions.join(', ')}],
+                     max_size: #{options[:max_size]}.megabytes#{multiple_option}#{max_files_option},
+                     strict_mime_check: true
         RUBY
       end
 
@@ -254,9 +245,12 @@ module UploadDND
 
       def show_view_instructions
         say ""
-        say "Dans votre formulaire (_form.html.erb ou new.html.erb) :", :yellow
+        say "Dans votre formulaire new.html.erb (création avec uploads temporaires) :", :yellow
         say ""
         say "  <%= form_with model: @#{singular_name} do |form| %>", :cyan
+        say "    <%# Champ caché pour lier les uploads temporaires %>", :cyan
+        say "    <%= upload_session_field %>", :cyan
+        say ""
         say "    <%# Vos autres champs... %>", :cyan
         say ""
         say "    <%# Ajoutez le champ d'upload %>", :cyan
@@ -265,12 +259,17 @@ module UploadDND
         say "    <%= form.submit %>", :cyan
         say "  <% end %>", :cyan
         say ""
+        say "Dans votre formulaire edit.html.erb (édition, pas besoin de upload_session_field) :", :yellow
+        say ""
+        say "  <%= form_with model: @#{singular_name} do |form| %>", :cyan
+        say "    <%# Vos autres champs... %>", :cyan
+        say "    <%= upload_field :#{attribute_name}, record: @#{singular_name} %>", :cyan
+        say "    <%= form.submit %>", :cyan
+        say "  <% end %>", :cyan
+        say ""
         say "Dans votre vue show.html.erb (pour afficher les fichiers) :", :yellow
         say ""
-        say "  <%# La gem fournit automatiquement l'affichage des fichiers via le composant %>", :cyan
-        say "  <%# Les fichiers sont visibles dans le formulaire d'édition (edit.html.erb) %>", :cyan
-        say ""
-        say "  <%# Si vous voulez afficher la liste ailleurs, utilisez : %>", :cyan
+        say "  <%# Si vous voulez afficher la liste des fichiers : %>", :cyan
         say "  <%= render 'upload_d_n_d/shared/files_list',", :cyan
         say "             record: @#{singular_name},", :cyan
         say "             attribute_name: :#{attribute_name} %>", :cyan
@@ -289,10 +288,10 @@ module UploadDND
         say "  # 3. Les actions attach_file et remove_file sont fournies par le concern", :cyan
         say "  # Elles utilisent @#{singular_name} automatiquement", :cyan
         say ""
-        say "  # 4. Pour les uploads temporaires (formulaire new/create), ajoutez dans l'action create :", :cyan
+        say "  # 4. Pour les uploads temporaires (formulaire new/create) :", :cyan
         say "  def create", :cyan
         say "    @#{singular_name} = #{class_name}.new(#{singular_name}_params)", :cyan
-        say "    @#{singular_name}.temp_upload_session_id = params[:temp_upload_session_id] if params[:temp_upload_session_id].present?", :cyan
+        say "    wire_temporary_uploads(@#{singular_name})", :cyan
         say "    # ...", :cyan
         say "  end", :cyan
         say ""

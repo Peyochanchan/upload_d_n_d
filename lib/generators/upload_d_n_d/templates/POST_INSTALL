@@ -46,7 +46,7 @@ Prochaines étapes :
   5. Utiliser le générateur de modèle (recommandé) :
 
      rails g upload_d_n_d:model User --attribute=avatar
-     rails g upload_d_n_d:model Project --attribute=documents --multiple --content_type=pdf doc docx
+     rails g upload_d_n_d:model Project --attribute=documents --multiple --content_type=pdf docx xlsx
 
   6. Utiliser dans vos vues :
 
