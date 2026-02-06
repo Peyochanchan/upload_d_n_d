@@ -23,10 +23,8 @@ class <%= plural_name.camelize %>Controller < ApplicationController
   def create
     @<%= singular_name %> = <%= class_name %>.new(<%= singular_name %>_params)
 
-    # Support pour les uploads temporaires
-    if params[:temp_upload_session_id] == session.id.to_s
-      @<%= singular_name %>.temp_upload_session_id = params[:temp_upload_session_id]
-    end
+    # Lie les uploads temporaires (session) au record
+    wire_temporary_uploads(@<%= singular_name %>)
 
     if @<%= singular_name %>.save
       redirect_to @<%= singular_name %>, notice: '<%= class_name %> créé avec succès'

@@ -85,6 +85,16 @@ module UploadDND
         end
       end
 
+      # Lie les uploads temporaires (session) au record avant save
+      # Utiliser dans l'action create :
+      #   wire_temporary_uploads(@record)
+      def wire_temporary_uploads(record)
+        sid = params[:temp_upload_session_id]
+        if sid.present? && sid == session.id.to_s
+          record.temp_upload_session_id = sid
+        end
+      end
+
       private
 
       def render_file_list(record, attribute_name)

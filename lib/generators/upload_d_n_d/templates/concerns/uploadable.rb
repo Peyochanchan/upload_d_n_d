@@ -24,45 +24,35 @@ module UploadDND
       #
       # @param attribute_name [Symbol] le nom de l'attribut (ex: :avatar, :documents)
       # @param options [Hash] les options de validation
-      # @option options [Array<String>] :content_type les types MIME autorisés
+      # @option options [Array<Symbol>] :accept extensions acceptées (ex: [:jpg, :png, :pdf])
+      # @option options [Array<String>] :content_type types MIME autorisés (alternative à :accept)
       # @option options [Integer] :max_size la taille max en bytes
       # @option options [Integer] :max_files le nombre max de fichiers (pour has_many)
-      # @option options [Boolean] :multiple autoriser plusieurs fichiers (auto-détecté depuis has_one/has_many par défaut)
+      # @option options [Boolean] :multiple autoriser plusieurs fichiers (déclare has_many_attached)
       # @option options [String] :message message d'erreur personnalisé
-      # @option options [Boolean] :strict_mime_check active la détection MIME côté serveur (anti-spoofing, plus coûteux)
+      # @option options [Boolean] :strict_mime_check active la détection MIME côté serveur (anti-spoofing)
       # @option options [String] :spoofing_message message d'erreur personnalisé pour les erreurs de spoofing
       #
-      # @example Image unique (has_one_attached)
+      # @example Image unique (has_one_attached déclaré automatiquement)
       #   class User < ApplicationRecord
       #     include UploadDND::Uploadable
       #
-      #     has_one_attached :avatar
       #     uploadable :avatar,
-      #                content_type: ['image/png', 'image/jpeg'],
-      #                max_size: 5.megabytes
-      #                # multiple: false est auto-détecté depuis has_one_attached
+      #                accept: [:jpg, :png],
+      #                max_size: 5.megabytes,
+      #                strict_mime_check: true
       #   end
       #
-      # @example Documents multiples (has_many_attached)
+      # @example Documents multiples (has_many_attached déclaré automatiquement)
       #   class Project < ApplicationRecord
       #     include UploadDND::Uploadable
       #
-      #     has_many_attached :documents
       #     uploadable :documents,
-      #                content_type: ['application/pdf', 'application/msword'],
+      #                accept: [:pdf, :doc, :docx],
       #                max_size: 10.megabytes,
-      #                max_files: 5
-      #                # multiple: true est auto-détecté depuis has_many_attached
-      #   end
-      #
-      # @example Forcer multiple explicitement
-      #   class Article < ApplicationRecord
-      #     include UploadDND::Uploadable
-      #
-      #     has_one_attached :cover
-      #     uploadable :cover,
-      #                content_type: ['image/png', 'image/jpeg'],
-      #                multiple: false  # Force explicitement (optionnel)
+      #                multiple: true,
+      #                max_files: 5,
+      #                strict_mime_check: true
       #   end
       def uploadable(attribute_name, **options)
         validates attribute_name,
