@@ -61,7 +61,7 @@ RSpec.describe UploadDND::Generators::UpdateGenerator, type: :generator do
     it "has a list of preserved files" do
       preserved = UploadDND::VersionTracker::PRESERVED_FILES
       expect(preserved).to be_an(Array)
-      expect(preserved).to include("app/models/concerns/upload_d_n_d/uploadable.rb")
+      expect(preserved).to include("app/helpers/upload_d_n_d/upload_helper.rb")
     end
 
     it "excludes preserved files from updates" do

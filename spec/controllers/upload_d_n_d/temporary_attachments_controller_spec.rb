@@ -151,20 +151,27 @@ RSpec.describe UploadDND::TemporaryAttachmentsController, type: :controller do
       end
 
       it 'rejects suspicious types when strict_mime_check is enabled' do
+        # Force la création du blob AVANT le stub Marcel
+        signed_id = blob.signed_id
+
         UploadDND.configure do |config|
-          config.accepted_types = 'image/png'
+          config.accepted_types = 'image/png,image/jpeg'
           config.strict_mime_check = true
         end
 
-        allow(Marcel::MimeType).to receive(:for).and_return('application/pdf')
+        # Marcel détecte image/jpeg mais le blob déclare image/png → suspicion de spoofing
+        allow(Marcel::MimeType).to receive(:for).and_return('image/jpeg')
 
-        post :create, params: valid_params, format: :json
+        post :create, params: { signed_blob_id: signed_id, attribute_name: 'avatar' }, format: :json
 
         expect(response).to have_http_status(:unprocessable_entity)
         expect(JSON.parse(response.body)['error']).to include('type réel du fichier')
       end
 
       it 'returns a clear error when mime detection fails' do
+        # Force la création du blob AVANT le stub
+        signed_id = blob.signed_id
+
         UploadDND.configure do |config|
           config.accepted_types = 'image/png'
           config.strict_mime_check = true
@@ -172,7 +179,7 @@ RSpec.describe UploadDND::TemporaryAttachmentsController, type: :controller do
 
         allow(Marcel::MimeType).to receive(:for).and_raise(StandardError, 'boom')
 
-        post :create, params: valid_params, format: :json
+        post :create, params: { signed_blob_id: signed_id, attribute_name: 'avatar' }, format: :json
 
         expect(response).to have_http_status(:unprocessable_entity)
         expect(JSON.parse(response.body)['error']).to include('Impossible de vérifier le type de fichier')
