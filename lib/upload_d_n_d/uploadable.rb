@@ -38,6 +38,20 @@ module UploadDND
       # @option options [Boolean] :strict_mime_check active la détection MIME côté serveur (anti-spoofing, plus coûteux)
       # @option options [String] :spoofing_message message d'erreur personnalisé pour les erreurs de spoofing
       def uploadable(attribute_name, **options)
+        # Résoudre accept: en content_type: (symboles → MIME strings)
+        if options[:accept]
+          options[:content_type] = UploadDND::MimeTypes.resolve(options.delete(:accept))
+        end
+
+        # Auto-déclarer has_one_attached / has_many_attached si pas déjà fait
+        unless reflect_on_attachment(attribute_name)
+          if options[:multiple]
+            has_many_attached attribute_name
+          else
+            has_one_attached attribute_name
+          end
+        end
+
         validates attribute_name,
                   file: options.slice(:content_type, :max_size, :max_files, :message, :strict_mime_check, :spoofing_message)
 

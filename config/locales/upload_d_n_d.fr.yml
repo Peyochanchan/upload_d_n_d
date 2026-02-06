@@ -1,6 +1,10 @@
 fr:
   upload_d_n_d:
     drag_and_drop: "Glissez-déposez vos fichiers ici ou cliquez pour sélectionner"
+    no_files: "Aucun fichier"
+    progress: "Progression de l'upload"
+    preview_file: "Aperçu"
+    delete_file: "Supprimer"
 
     errors:
       blob_not_found: "Fichier non trouvé"
@@ -9,12 +13,22 @@ fr:
       unauthorized: "Vous n'êtes pas autorisé à modifier ce fichier"
       invalid_type: "Type de fichier non accepté. Formats autorisés : %{types}"
       too_large: "Le fichier dépasse la taille maximale de %{max_size}"
+      suspicious_type: "Le type réel du fichier ne correspond pas au type déclaré"
+      mime_detection_failed: "Impossible de vérifier le type de fichier : %{message}"
       max_files_exceeded: "Vous ne pouvez pas ajouter plus de %{max} fichiers"
       file_not_found_or_denied: "Fichier non trouvé ou accès refusé"
       save_failed: "Erreur lors de l'enregistrement : %{errors}"
       invalid_attribute: "L'attribut %{attribute} n'existe pas"
       not_active_storage_attachment: "L'attribut %{attribute} n'est pas un attachment ActiveStorage"
       record_gid_required: "Le paramètre record_gid est requis pour attacher à un record existant. Utilisez /temporary_attachments pour les uploads sans record."
+      missing_params: "Paramètres manquants"
+      invalid_attribute_name: "Nom d'attribut invalide"
+      invalid_blob_signature: "Signature du blob invalide"
+      record_not_found: "Enregistrement non trouvé"
+      upload_error: "Une erreur est survenue lors de l'upload"
+      authentication_required: "Vous devez être connecté pour uploader des fichiers"
+      invalid_file_token: "Token de fichier invalide"
+      rate_limited: "Trop de requêtes. Veuillez patienter %{seconds} secondes."
 
     success:
       file_added: "Fichier ajouté avec succès"

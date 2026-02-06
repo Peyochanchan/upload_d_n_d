@@ -22,6 +22,7 @@ module UploadDND
     before_action :authorize_delete!, only: [:destroy]
 
     before_action :find_temp_attachment, only: [:destroy]
+    before_action :validate_blob_constraints, only: [:create]
 
     # POST /upload_d_n_d/temporary_attachments
     #
@@ -110,6 +111,81 @@ module UploadDND
 
     def log_deletion
       Rails.logger.info "UploadDND: Temporary file deleted - #{@temp_attachment.attribute_name} by #{current_user&.id || 'anonymous'}"
+    end
+
+    def validate_blob_constraints
+      return unless @blob
+
+      max_size = UploadDND.configuration.max_size
+      if max_size.present? && @blob.byte_size > max_size
+        render_error(
+          I18n.t(
+            'upload_d_n_d.errors.too_large',
+            max_size: ActiveSupport::NumberHelper.number_to_human_size(max_size)
+          ),
+          :unprocessable_entity
+        )
+        return
+      end
+
+      accepted_types = normalized_accepted_types
+      if accepted_types.present? && !accepted_types.include?(@blob.content_type)
+        render_error(
+          I18n.t(
+            'upload_d_n_d.errors.invalid_type',
+            types: UploadDND.configuration.accepted_types
+          ),
+          :unprocessable_entity
+        )
+        return
+      end
+
+      return unless UploadDND.configuration.strict_mime_check
+      return if accepted_types.blank?
+
+      detected_content_type = Marcel::MimeType.for(
+        @blob.download,
+        name: @blob.filename.to_s
+      )
+
+      if detected_content_type.present? && !accepted_types.include?(detected_content_type)
+        render_error(
+          I18n.t(
+            'upload_d_n_d.errors.invalid_type',
+            types: UploadDND.configuration.accepted_types
+          ),
+          :unprocessable_entity
+        )
+        return
+      end
+
+      if detected_content_type.present? && detected_content_type != @blob.content_type
+        render_error(
+          I18n.t('upload_d_n_d.errors.suspicious_type'),
+          :unprocessable_entity
+        )
+        return
+      end
+    rescue StandardError => e
+      render_error(
+        I18n.t('upload_d_n_d.errors.mime_detection_failed', message: e.message),
+        :unprocessable_entity
+      )
+    end
+
+    def normalized_accepted_types
+      raw = Array(UploadDND.configuration.accepted_types).flat_map { |value| value.to_s.split(",") }
+      raw = raw.map(&:strip).reject(&:blank?)
+      return [] if raw.empty?
+
+      raw.filter_map do |type|
+        if type.include?("/")
+          type
+        else
+          ext = type.start_with?(".") ? type : ".#{type}"
+          Marcel::MimeType.for(name: "file#{ext}")
+        end
+      end.uniq
     end
 
     # === Autorisation ===

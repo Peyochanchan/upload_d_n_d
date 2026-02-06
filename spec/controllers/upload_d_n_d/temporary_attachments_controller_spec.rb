@@ -130,6 +130,54 @@ RSpec.describe UploadDND::TemporaryAttachmentsController, type: :controller do
         expect(JSON.parse(response.body)['status']).to eq('ok')
       end
     end
+
+    context 'with server-side validation' do
+      let(:valid_params) do
+        {
+          signed_blob_id: blob.signed_id,
+          attribute_name: 'avatar'
+        }
+      end
+
+      it 'rejects invalid content types based on configuration' do
+        UploadDND.configure do |config|
+          config.accepted_types = 'image/jpeg'
+        end
+
+        post :create, params: valid_params, format: :json
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(JSON.parse(response.body)['error']).to include('Type de fichier non accepté')
+      end
+
+      it 'rejects suspicious types when strict_mime_check is enabled' do
+        UploadDND.configure do |config|
+          config.accepted_types = 'image/png'
+          config.strict_mime_check = true
+        end
+
+        allow(Marcel::MimeType).to receive(:for).and_return('application/pdf')
+
+        post :create, params: valid_params, format: :json
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(JSON.parse(response.body)['error']).to include('type réel du fichier')
+      end
+
+      it 'returns a clear error when mime detection fails' do
+        UploadDND.configure do |config|
+          config.accepted_types = 'image/png'
+          config.strict_mime_check = true
+        end
+
+        allow(Marcel::MimeType).to receive(:for).and_raise(StandardError, 'boom')
+
+        post :create, params: valid_params, format: :json
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(JSON.parse(response.body)['error']).to include('Impossible de vérifier le type de fichier')
+      end
+    end
   end
 
   describe 'DELETE #destroy' do

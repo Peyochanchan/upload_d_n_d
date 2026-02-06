@@ -10,24 +10,33 @@
      data-upload-d-n-d--uploads-multiple-value="<%= multiple %>"
      data-upload-d-n-d--uploads-i18n-value="<%= i18n_messages.to_json %>">
 
-  <div class="udnd-dropzone" 
+  <div class="udnd-dropzone"
+       role="button"
+       tabindex="0"
+       aria-label="<%= t('upload_d_n_d.drag_and_drop') %>"
        data-action="dragover->upload-d-n-d--uploads#handleDragOver dragenter->upload-d-n-d--uploads#handleDragEnter dragleave->upload-d-n-d--uploads#handleDragLeave drop->upload-d-n-d--uploads#handleDrop">
-    
-    <input type="file" 
+
+    <input type="file"
            class="udnd-input-hidden"
+           aria-label="<%= t('upload_d_n_d.drag_and_drop') %>"
            data-action="change->upload-d-n-d--uploads#previewFiles"
            accept="<%= accepted_types %>"
            <%= 'multiple' if multiple %>>
 
     <div class="udnd-dropzone-content">
       <div class="udnd-icon-wrapper">
-        <i class="fas fa-cloud-upload-alt"></i>
+        <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i>
       </div>
       <p class="udnd-text-main"><%= t('upload_d_n_d.drag_and_drop') %></p>
       <p class="udnd-text-sub"><%= accepted_types %> (max. <%= number_to_human_size(max_size) %>)</p>
     </div>
 
-    <div class="udnd-progress-container">
+    <div class="udnd-progress-container"
+         role="progressbar"
+         aria-valuenow="0"
+         aria-valuemin="0"
+         aria-valuemax="100"
+         aria-label="<%= t('upload_d_n_d.progress', default: 'Upload progress') %>">
       <div class="udnd-progress-bar" data-upload-d-n-d--uploads-target="progressBar"></div>
     </div>
   </div>

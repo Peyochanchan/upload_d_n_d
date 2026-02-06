@@ -43,14 +43,18 @@ module UploadDND
       def copy_concerns
         say "Installation des concerns...", :green
 
-        template "concerns/uploadable.rb",
-                 "app/models/concerns/upload_d_n_d/uploadable.rb"
-
-        template "concerns/controllers_uploadable.rb",
-                 "app/controllers/concerns/upload_d_n_d/controllers/uploadable.rb"
+        # Les concerns critiques (Uploadable, Controllers::Uploadable, FileValidator)
+        # sont désormais fournis par le runtime de la gem (lib/).
+        # Seul upload_authorization reste un template car il est personnalisable.
+        say "  ✓ UploadDND::Uploadable         → fourni par la gem (lib/)", :cyan
+        say "  ✓ UploadDND::Controllers::Uploadable → fourni par la gem (lib/)", :cyan
+        say "  ✓ UploadDND::FileValidator       → fourni par la gem (lib/)", :cyan
 
         template "concerns/upload_authorization.rb",
                  "app/controllers/concerns/upload_d_n_d/upload_authorization.rb"
+
+        # Nettoyage : supprime les anciennes copies si elles existent (migration depuis v0.3.x)
+        remove_stale_overrides
       end
 
       def copy_helpers
@@ -58,18 +62,6 @@ module UploadDND
 
         copy_file "helpers/upload_helper.rb",
                  "app/helpers/upload_d_n_d/upload_helper.rb"
-      end
-
-      def copy_validator
-        if File.exist?("app/validators/file_validator.rb")
-          say "FileValidator existe déjà, on ne le remplace pas", :yellow
-        else
-          if yes?("Voulez-vous installer le FileValidator recommandé ? (y/n)")
-            say "Installation du FileValidator...", :green
-            template "validators/file_validator.rb",
-                     "app/validators/file_validator.rb"
-          end
-        end
       end
 
       def install_stimulus_controller
@@ -202,6 +194,34 @@ module UploadDND
       end
 
       private
+
+      # Supprime les fichiers qui étaient copiés par les anciennes versions (< 0.4.0)
+      # et qui shadowent désormais le runtime de la gem.
+      STALE_OVERRIDES = [
+        "app/models/concerns/upload_d_n_d/uploadable.rb",
+        "app/controllers/concerns/upload_d_n_d/controllers/uploadable.rb",
+        "app/validators/file_validator.rb"
+      ].freeze
+
+      def remove_stale_overrides
+        stale = STALE_OVERRIDES.select { |f| File.exist?(f) }
+        return if stale.empty?
+
+        say ""
+        say "⚠️  Anciennes copies détectées (migrées vers le runtime gem) :", :yellow
+        stale.each { |f| say "   • #{f}", :yellow }
+        say ""
+
+        if yes?("Supprimer ces fichiers obsolètes ? (recommandé) (y/n)")
+          stale.each do |f|
+            remove_file f
+            say "  ✓ #{f} supprimé", :green
+          end
+        else
+          say "  ⚠️  Conservées. Attention : elles prennent priorité sur la gem.", :red
+        end
+        say ""
+      end
 
       def gem_installed?(gem_name)
         File.read("Gemfile").include?(gem_name)
