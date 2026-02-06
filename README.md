@@ -37,15 +37,16 @@ rails generate upload_d_n_d:install
 Le générateur va :
 - Vérifier et ajouter `view_component` et `stimulus-rails` au Gemfile si nécessaire
 - Créer la migration pour les fichiers temporaires
-- Installer les concerns (modèle et controller), helpers et contrôleurs Stimulus
 - Copier les contrôleurs Stimulus dans `app/javascript/controllers/upload_d_n_d/`
   puis vous inviter à exécuter `bin/rails stimulus:manifest:update` (si votre manifest est auto-généré)
 - Copier les styles dans `app/assets/stylesheets/upload_d_n_d.css` (**sans** modifier votre stylesheet principal)
+- Installer le helper et le fichier d'autorisation (personnalisables)
 - Servir les vues directement depuis la gem (aucune vue copiée dans l'app hôte)
 - Monter les routes du moteur
 - Créer le fichier de configuration
-- (Optionnel) Installer le FileValidator si vous n'en avez pas
 - (Optionnel) Générer la policy Pundit si Pundit est détecté
+
+> **Architecture v0.4.0** : Les modules critiques (`Uploadable`, `Controllers::Uploadable`, `FileValidator`) sont fournis par le runtime de la gem. Ne créez pas de copies locales.
 
 ### 4. Lancez la migration
 
@@ -187,20 +188,25 @@ rails g upload_d_n_d:model --help
 class User < ApplicationRecord
   include UploadDND::Uploadable
 
-  # Pour un seul fichier
-  has_one_attached :avatar
+  # Pour un seul fichier (has_one_attached déclaré automatiquement)
   uploadable :avatar,
-             content_type: ['image/png', 'image/jpeg'],
-             max_size: 5.megabytes
+             accept: [:jpg, :png],
+             max_size: 5.megabytes,
+             strict_mime_check: true
 
-  # Pour plusieurs fichiers
-  has_many_attached :documents
+  # Pour plusieurs fichiers (has_many_attached déclaré automatiquement)
   uploadable :documents,
-             content_type: ['application/pdf'],
+             accept: [:pdf],
              max_size: 10.megabytes,
-             max_files: 5
+             multiple: true,
+             max_files: 5,
+             strict_mime_check: true
 end
 ```
+
+> **Note v0.4.0** : `uploadable` déclare automatiquement `has_one_attached` / `has_many_attached`.
+> Utilisez `accept:` avec des symboles d'extension (`:jpg`, `:pdf`, etc.) au lieu de strings MIME.
+> Les strings MIME restent acceptées via `content_type:` pour la rétrocompatibilité.
 
 ### 2. Utilisez le helper dans vos vues
 
@@ -232,13 +238,13 @@ Pour les formulaires de création, utilisez upload temporaire :
 
 ```erb
 <%= form_with model: @user, url: users_path do |f| %>
+  <%# Champ caché pour lier les uploads temporaires %>
+  <%= upload_session_field %>
+
   <%= f.text_field :name %>
 
   <%# Pas de record, les fichiers seront stockés temporairement %>
   <%= upload_field :avatar, accepted_types: '.png,.jpg' %>
-
-  <%# Hidden field pour transférer le session_id (sécurisé côté serveur) %>
-  <%= hidden_field_tag :temp_upload_session_id, session.id.to_s %>
 
   <%= f.submit %>
 <% end %>
@@ -248,14 +254,13 @@ Dans votre controller :
 
 ```ruby
 class UsersController < ApplicationController
+  include UploadDND::Controllers::Uploadable
+
   def create
     @user = User.new(user_params)
 
-    # Assigne le session_id de manière sécurisée (non exposé dans params)
-    # Vérifie que le session_id correspond bien à la session actuelle
-    if params[:temp_upload_session_id] == session.id.to_s
-      @user.temp_upload_session_id = params[:temp_upload_session_id]
-    end
+    # Lie les uploads temporaires (vérifie le session_id automatiquement)
+    wire_temporary_uploads(@user)
 
     if @user.save
       # Les fichiers temporaires seront automatiquement attachés
@@ -268,27 +273,13 @@ class UsersController < ApplicationController
   private
 
   def user_params
-    # temp_upload_session_id n'est PAS dans les params permis (sécurité)
     params.require(:user).permit(:name)
   end
 end
 ```
 
-Le modèle utilise le concern Uploadable :
-
-```ruby
-class User < ApplicationRecord
-  include UploadDND::Uploadable
-
-  has_one_attached :avatar
-  uploadable :avatar, content_type: ['image/png', 'image/jpeg']
-
-  # Pas besoin d'attr_accessor, c'est géré en interne par le concern
-end
-```
-
-**Sécurité** : Le `temp_upload_session_id` utilise une variable d'instance privée (`@_temp_upload_session_id`)
-au lieu d'un `attr_accessor` public, et le controller vérifie que le session_id correspond à la session actuelle.
+**Sécurité** : `wire_temporary_uploads` vérifie que le `session_id` correspond à la session actuelle.
+Le `temp_upload_session_id` utilise une variable d'instance privée (`@_temp_upload_session_id`).
 
 ### 3. Utilisation dans différents namespaces
 
@@ -300,8 +291,11 @@ UploadDND fonctionne de manière transparente dans **tous les namespaces** de vo
 # app/models/user.rb
 class User < ApplicationRecord
   include UploadDND::Uploadable
-  has_one_attached :avatar
-  uploadable :avatar, content_type: ['image/png', 'image/jpeg']
+
+  uploadable :avatar,
+             accept: [:jpg, :png],
+             max_size: 5.megabytes,
+             strict_mime_check: true
 end
 ```
 
@@ -317,10 +311,13 @@ end
 module Admin
   class Article < ApplicationRecord
     include UploadDND::Uploadable
-    has_many_attached :images
+
     uploadable :images,
-               content_type: ['image/png', 'image/jpeg'],
-               max_files: 10
+               accept: [:jpg, :png],
+               max_size: 10.megabytes,
+               multiple: true,
+               max_files: 10,
+               strict_mime_check: true
   end
 end
 ```
@@ -339,10 +336,11 @@ end
 module Manager
   class Report < ApplicationRecord
     include UploadDND::Uploadable
-    has_one_attached :pdf_file
+
     uploadable :pdf_file,
-               content_type: ['application/pdf'],
-               max_size: 50.megabytes
+               accept: [:pdf],
+               max_size: 50.megabytes,
+               strict_mime_check: true
   end
 end
 ```
@@ -403,7 +401,7 @@ Exemple (anti-spoofing activé) :
 
 ```ruby
 uploadable :avatar,
-           content_type: ['image/png', 'image/jpeg'],
+           accept: [:jpg, :png],
            max_size: 5.megabytes,
            strict_mime_check: true
 ```
