@@ -286,16 +286,37 @@ RSpec.describe UploadDND::FileValidator do
       TestRecord.clear_validators!
     end
 
-    it "calls validate_mime_type when strict_mime_check is enabled" do
-      # Le blob mock retourne un StringIO vide, donc Marcel détectera un type différent
-      # Ce test vérifie que la méthode est bien appelée
-      allow_any_instance_of(MockBlob).to receive(:download).and_return(StringIO.new("fake image data"))
+    it "rejects when detected content type is not allowed" do
+      allow(Marcel::MimeType).to receive(:for).and_return("application/pdf")
 
       record.avatar.attach(image_blob)
 
-      # Avec strict_mime_check, une validation MIME supplémentaire est effectuée
-      # Le test passe si aucune exception n'est levée
-      expect { record.valid? }.not_to raise_error
+      expect(record).not_to be_valid
+      expect(record.errors[:avatar]).to include(
+        "Le type de fichier détecté (application/pdf) ne correspond pas aux types autorisés"
+      )
+      expect(record.errors[:avatar]).to include(
+        "Le type de fichier détecté (application/pdf) ne correspond pas au type déclaré (image/jpeg)"
+      )
+    end
+
+    it "accepts when detected content type matches declared" do
+      allow(Marcel::MimeType).to receive(:for).and_return("image/jpeg")
+
+      record.avatar.attach(image_blob)
+
+      expect(record).to be_valid
+    end
+
+    it "adds a clear error when mime detection fails" do
+      allow(Marcel::MimeType).to receive(:for).and_raise(StandardError, "boom")
+
+      record.avatar.attach(image_blob)
+
+      expect(record).not_to be_valid
+      expect(record.errors[:avatar]).to include(
+        "Impossible de vérifier le type de fichier : boom"
+      )
     end
   end
 

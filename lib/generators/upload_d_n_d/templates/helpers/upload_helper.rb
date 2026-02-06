@@ -35,6 +35,12 @@ module UploadDND
       )
     end
 
+    # Génère un champ caché avec le session_id pour les uploads temporaires.
+    # À placer dans les formulaires qui créent un nouveau record avec upload.
+    def upload_session_field
+      tag.input(type: "hidden", name: "temp_upload_session_id", value: session.id.to_s)
+    end
+
     # Affiche la liste des fichiers uploadés
     #
     # @param attribute_name [Symbol] le nom de l'attribut

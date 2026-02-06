@@ -381,7 +381,7 @@
 }
 
 .udnd-btn-download:hover {
-  background-color: #d96342;
+  background-color: color-mix(in srgb, var(--udnd-accent-color) 85%, black);
   transform: translateY(-2px);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
@@ -522,9 +522,8 @@
 }
 
 .udnd-modal-button:focus {
-  outline: none;
-  ring: 2px;
-  ring-offset: 2px;
+  outline: 2px solid rgb(var(--udnd-accent-rgb));
+  outline-offset: 2px;
 }
 
 /* Primary button (OK dans alerts) */
@@ -534,7 +533,7 @@
 }
 
 .udnd-modal-button--primary:hover {
-  background-color: #d96342;
+  background-color: color-mix(in srgb, var(--udnd-accent-color) 85%, black);
   transform: translateY(-1px);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }

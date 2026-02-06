@@ -42,13 +42,13 @@ module UploadDND
 
     def validate_params
       unless params[:signed_blob_id].present? && params[:attribute_name].present?
-        render_error("Paramètres manquants", :bad_request)
+        render_error(I18n.t("upload_d_n_d.errors.missing_params"), :bad_request)
         return
       end
 
       # Validation du nom d'attribut (alphanumeric + underscore uniquement)
       unless params[:attribute_name].match?(/\A[a-z_][a-z0-9_]*\z/)
-        render_error("Nom d'attribut invalide", :bad_request)
+        render_error(I18n.t("upload_d_n_d.errors.invalid_attribute_name"), :bad_request)
         return
       end
     end
@@ -56,7 +56,7 @@ module UploadDND
     def find_blob
       @blob = ActiveStorage::Blob.find_signed(params[:signed_blob_id])
     rescue ActiveSupport::MessageVerifier::InvalidSignature
-      render_error("Signature du blob invalide", :unauthorized)
+      render_error(I18n.t("upload_d_n_d.errors.invalid_blob_signature"), :unauthorized)
       nil
     end
 
@@ -76,18 +76,18 @@ module UploadDND
     # === Gestion des erreurs ===
 
     def record_not_found
-      render_error("Enregistrement non trouvé", :not_found)
+      render_error(I18n.t("upload_d_n_d.errors.record_not_found"), :not_found)
     end
 
     def blob_integrity_error
-      render_error("Le fichier est corrompu ou invalide", :unprocessable_entity)
+      render_error(I18n.t("upload_d_n_d.errors.corrupted"), :unprocessable_entity)
     end
 
     def handle_error(exception)
       Rails.logger.error "UploadDND Error: #{exception.class} - #{exception.message}"
       Rails.logger.error exception.backtrace.join("\n")
 
-      render_error("Une erreur est survenue lors de l'upload", :internal_server_error)
+      render_error(I18n.t("upload_d_n_d.errors.upload_error"), :internal_server_error)
     end
 
     def bad_request_error(exception)
@@ -124,7 +124,7 @@ module UploadDND
       # Sinon, on vérifie qu'un current_user existe si config l'exige
       elsif UploadDND.configuration.require_authentication
         unless current_user.present?
-          render_error("Vous devez être connecté pour uploader des fichiers", :unauthorized)
+          render_error(I18n.t("upload_d_n_d.errors.authentication_required"), :unauthorized)
           return
         end
       end
@@ -161,7 +161,7 @@ module UploadDND
              signed_blob_id.length > 20 &&
              signed_blob_id.match?(/\A[A-Za-z0-9\-_+=]+\z/)
         Rails.logger.warn "UploadDND: Invalid signed_blob_id format attempted"
-        render_error("Token de fichier invalide", :unauthorized)
+        render_error(I18n.t("upload_d_n_d.errors.invalid_file_token"), :unauthorized)
         return
       end
     end

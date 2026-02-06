@@ -28,6 +28,17 @@ module UploadDND
       end
     end
 
+    # Transfère le session_id d'upload temporaire vers le record,
+    # uniquement si le param correspond à la session courante (sécurité).
+    #
+    # @param record [ApplicationRecord] le record sur lequel wirer le session_id
+    def wire_temporary_uploads(record)
+      sid = params[:temp_upload_session_id]
+      if sid.present? && sid == session.id.to_s
+        record.temp_upload_session_id = sid
+      end
+    end
+
     # Attache un fichier à un record existant
     # Utilise les fichiers temporaires uploadés via UploadDND
     #

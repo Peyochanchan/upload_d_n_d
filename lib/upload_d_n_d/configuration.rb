@@ -4,6 +4,7 @@ module UploadDND
   class Configuration
     attr_accessor :max_size,
                   :accepted_types,
+                  :strict_mime_check,
                   :main_color,
                   :allow_anonymous_uploads,
                   :require_authentication,
@@ -21,6 +22,7 @@ module UploadDND
       # Valeurs par défaut
       @max_size = 10.megabytes
       @accepted_types = '.pdf,.doc,.docx,.jpg,.jpeg,.png,.gif'
+      @strict_mime_check = false
       @main_color = '#E97451'
       @allow_anonymous_uploads = false
       @require_authentication = true # Par défaut, authentification requise

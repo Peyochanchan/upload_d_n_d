@@ -36,7 +36,7 @@ module UploadDND
         response.headers["X-RateLimit-Reset"] = (Time.current + retry_after.seconds).to_i.to_s
 
         render_error(
-          "Trop de requêtes. Veuillez patienter #{retry_after} secondes.",
+          I18n.t("upload_d_n_d.errors.rate_limited", seconds: retry_after),
           :too_many_requests
         )
 

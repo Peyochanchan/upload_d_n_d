@@ -229,41 +229,76 @@ export default class extends Controller {
     return this.createModal(title, text, 'warning', true, confirmButtonText, cancelButtonText)
   }
 
-  // Crée une modale (alert ou confirm)
+  // Crée une modale (alert ou confirm) via DOM APIs (pas d'innerHTML)
   createModal(title, message, type, isConfirm, confirmText = "OK", cancelText = "Cancel") {
     return new Promise((resolve) => {
-      const modalHTML = `
-        <div class="udnd-modal-overlay" data-action="click->upload-d-n-d--uploads#closeModalOnOverlay">
-          <div class="udnd-modal" data-action="click->upload-d-n-d--uploads#stopPropagation">
-            <div class="udnd-modal-header">
-              <div class="udnd-modal-icon udnd-modal-icon--${type}">
-                ${this.getIcon(type)}
-              </div>
-            </div>
-            <div class="udnd-modal-body">
-              <h3 class="udnd-modal-title">${title}</h3>
-              <p class="udnd-modal-message">${message}</p>
-            </div>
-            <div class="udnd-modal-footer">
-              ${isConfirm ? `
-                <button type="button" class="udnd-modal-button udnd-modal-button--cancel" data-action="click->upload-d-n-d--uploads#cancelModal">
-                  ${cancelText}
-                </button>
-                <button type="button" class="udnd-modal-button udnd-modal-button--confirm" data-action="click->upload-d-n-d--uploads#confirmModal">
-                  ${confirmText}
-                </button>
-              ` : `
-                <button type="button" class="udnd-modal-button udnd-modal-button--primary" data-action="click->upload-d-n-d--uploads#closeModal">
-                  ${confirmText}
-                </button>
-              `}
-            </div>
-          </div>
-        </div>
-      `
+      // Overlay
+      const overlay = document.createElement('div')
+      overlay.className = 'udnd-modal-overlay'
+      overlay.setAttribute('data-action', 'click->upload-d-n-d--uploads#closeModalOnOverlay')
+      overlay.setAttribute('role', 'dialog')
+      overlay.setAttribute('aria-modal', 'true')
+
+      // Modal
+      const modal = document.createElement('div')
+      modal.className = 'udnd-modal'
+      modal.setAttribute('data-action', 'click->upload-d-n-d--uploads#stopPropagation')
+
+      // Header + icon
+      const header = document.createElement('div')
+      header.className = 'udnd-modal-header'
+      const iconDiv = document.createElement('div')
+      iconDiv.className = `udnd-modal-icon udnd-modal-icon--${type}`
+      iconDiv.innerHTML = this.getIcon(type) // SVG icons are safe (static content)
+      header.appendChild(iconDiv)
+
+      // Body
+      const body = document.createElement('div')
+      body.className = 'udnd-modal-body'
+      const h3 = document.createElement('h3')
+      h3.className = 'udnd-modal-title'
+      h3.textContent = title
+      const p = document.createElement('p')
+      p.className = 'udnd-modal-message'
+      p.textContent = message
+      body.appendChild(h3)
+      body.appendChild(p)
+
+      // Footer
+      const footer = document.createElement('div')
+      footer.className = 'udnd-modal-footer'
+
+      if (isConfirm) {
+        const cancelBtn = document.createElement('button')
+        cancelBtn.type = 'button'
+        cancelBtn.className = 'udnd-modal-button udnd-modal-button--cancel'
+        cancelBtn.setAttribute('data-action', 'click->upload-d-n-d--uploads#cancelModal')
+        cancelBtn.textContent = cancelText
+
+        const confirmBtn = document.createElement('button')
+        confirmBtn.type = 'button'
+        confirmBtn.className = 'udnd-modal-button udnd-modal-button--confirm'
+        confirmBtn.setAttribute('data-action', 'click->upload-d-n-d--uploads#confirmModal')
+        confirmBtn.textContent = confirmText
+
+        footer.appendChild(cancelBtn)
+        footer.appendChild(confirmBtn)
+      } else {
+        const okBtn = document.createElement('button')
+        okBtn.type = 'button'
+        okBtn.className = 'udnd-modal-button udnd-modal-button--primary'
+        okBtn.setAttribute('data-action', 'click->upload-d-n-d--uploads#closeModal')
+        okBtn.textContent = confirmText
+        footer.appendChild(okBtn)
+      }
+
+      modal.appendChild(header)
+      modal.appendChild(body)
+      modal.appendChild(footer)
+      overlay.appendChild(modal)
 
       const container = document.createElement('div')
-      container.innerHTML = modalHTML
+      container.appendChild(overlay)
       container._resolveFunction = resolve
       this.currentModalContainer = container
 
@@ -271,7 +306,7 @@ export default class extends Controller {
 
       // Anime l'ouverture
       requestAnimationFrame(() => {
-        container.querySelector('.udnd-modal-overlay').classList.add('udnd-modal-overlay--active')
+        overlay.classList.add('udnd-modal-overlay--active')
       })
 
       // Gestion Escape
@@ -281,11 +316,6 @@ export default class extends Controller {
         }
       }
       document.addEventListener('keydown', this.modalKeydownHandler)
-
-      // Pour les alerts (pas de resolve), résoudre immédiatement
-      if (!isConfirm) {
-        // L'alert se ferme juste, pas besoin de retourner une valeur
-      }
     })
   }
 

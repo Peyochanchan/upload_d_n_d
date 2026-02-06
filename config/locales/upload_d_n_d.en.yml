@@ -1,6 +1,10 @@
 en:
   upload_d_n_d:
     drag_and_drop: "Drag and drop your files here or click to select"
+    no_files: "No files"
+    progress: "Upload progress"
+    preview_file: "Preview"
+    delete_file: "Delete"
 
     errors:
       blob_not_found: "File not found"
@@ -9,12 +13,22 @@ en:
       unauthorized: "You are not authorized to update this file"
       invalid_type: "Invalid file type. Accepted formats: %{types}"
       too_large: "File exceeds maximum size of %{max_size}"
+      suspicious_type: "The actual file type does not match the declared type"
+      mime_detection_failed: "Unable to verify file type: %{message}"
       max_files_exceeded: "You cannot add more than %{max} files"
       file_not_found_or_denied: "File not found or access denied"
       save_failed: "Save failed: %{errors}"
       invalid_attribute: "Attribute %{attribute} does not exist"
       not_active_storage_attachment: "Attribute %{attribute} is not an ActiveStorage attachment"
       record_gid_required: "The record_gid parameter is required to attach to an existing record. Use /temporary_attachments for uploads without a record."
+      missing_params: "Missing parameters"
+      invalid_attribute_name: "Invalid attribute name"
+      invalid_blob_signature: "Invalid blob signature"
+      record_not_found: "Record not found"
+      upload_error: "An error occurred during upload"
+      authentication_required: "You must be logged in to upload files"
+      invalid_file_token: "Invalid file token"
+      rate_limited: "Too many requests. Please wait %{seconds} seconds."
 
     success:
       file_added: "File added successfully"

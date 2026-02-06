@@ -30,11 +30,19 @@ module UploadDND
 
     # Fichiers à NE PAS mettre à jour automatiquement (personnalisables par l'utilisateur)
     PRESERVED_FILES = [
-      "app/models/concerns/upload_d_n_d/uploadable.rb",
-      "app/controllers/concerns/upload_d_n_d/controllers/uploadable.rb",
+      "app/controllers/concerns/upload_d_n_d/upload_authorization.rb",
       "app/helpers/upload_d_n_d/upload_helper.rb",
       "config/initializers/upload_d_n_d.rb",
+      "app/policies/upload_d_n_d_temporary_attachment_policy.rb",
+      "app/policies/upload_d_n_d_attachment_policy.rb",
       "app/models/**/*.rb" # Modèles utilisateur
+    ].freeze
+
+    # Fichiers qui shadowent le runtime de la gem et doivent être supprimés (depuis v0.4.0)
+    STALE_OVERRIDES = [
+      "app/models/concerns/upload_d_n_d/uploadable.rb",
+      "app/controllers/concerns/upload_d_n_d/controllers/uploadable.rb",
+      "app/validators/file_validator.rb"
     ].freeze
 
     class << self
@@ -79,6 +87,11 @@ module UploadDND
         end
       end
 
+      # Détecte les fichiers locaux qui shadowent le runtime de la gem
+      def stale_override_files
+        STALE_OVERRIDES.select { |f| File.exist?(Rails.root.join(f)) }
+      end
+
       # Récupère le chemin complet d'un fichier dans la gem
       def gem_file_path(relative_path)
         gem_root = Gem::Specification.find_by_name("upload_d_n_d").gem_dir
@@ -93,26 +106,46 @@ module UploadDND
         return nil unless update_available?
 
         outdated = outdated_files
-        return nil if outdated.empty?
+        stale = stale_override_files
 
-        <<~MSG
+        return nil if outdated.empty? && stale.empty?
+
+        parts = []
+        parts << <<~MSG
 
           ╔════════════════════════════════════════════════════════════════╗
-          ║  📦 UploadDND - Mise à jour disponible                         ║
+          ║  UploadDND - Mise à jour disponible                          ║
           ╠════════════════════════════════════════════════════════════════╣
-          ║  Version installée : #{installed_version.to_s.ljust(43)} ║
-          ║  Version disponible: #{UploadDND::VERSION.ljust(43)} ║
+          ║  Version installée : #{installed_version.to_s.ljust(43)}║
+          ║  Version disponible: #{UploadDND::VERSION.ljust(43)}║
+        MSG
+
+        if outdated.any?
+          parts << <<~MSG
+            ║                                                                ║
+            ║  Fichiers obsolètes: #{outdated.size.to_s.ljust(44)}║
+            #{outdated.map { |f| "║  - #{File.basename(f).ljust(60)}║" }.join("\n")}
+          MSG
+        end
+
+        if stale.any?
+          parts << <<~MSG
+            ║                                                                ║
+            ║  ATTENTION: fichiers qui shadowent le runtime gem:             ║
+            #{stale.map { |f| "║  ! #{f.ljust(60)}║" }.join("\n")}
+            ║  Ces fichiers empêchent la gem de fonctionner correctement.    ║
+            ║  Supprimez-les ou lancez: rails g upload_d_n_d:update          ║
+          MSG
+        end
+
+        parts << <<~MSG
           ║                                                                ║
-          ║  Fichiers obsolètes: #{outdated.size.to_s.ljust(44)} ║
-          #{outdated.map { |f| "║  • #{File.basename(f).ljust(60)} ║" }.join("\n")}
-          ║                                                                ║
-          ║  Pour mettre à jour (recommandé):                             ║
-          ║  $ rails g upload_d_n_d:update                                ║
-          ║                                                                ║
-          ║  ⚠️  Vos modèles et configurations seront préservés            ║
+          ║  Pour mettre à jour: rails g upload_d_n_d:update               ║
           ╚════════════════════════════════════════════════════════════════╝
 
         MSG
+
+        parts.join
       end
     end
   end

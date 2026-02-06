@@ -31,8 +31,9 @@
                       data-preview-url="<%= main_app.rails_blob_path(blob, disposition: "inline") %>"
                       data-preview-filename="<%= blob.filename %>"
                       data-preview-content-type="<%= blob.content_type %>"
-                      title="Aperçu">
-                <i class="fas fa-eye"></i>
+                      title="<%= t('upload_d_n_d.preview_file') %>"
+                      aria-label="<%= t('upload_d_n_d.preview_file') %> : <%= blob.filename %>">
+                <i class="fas fa-eye" aria-hidden="true"></i>
               </button>
             <% end %>
 
@@ -41,8 +42,9 @@
                     class="udnd-btn-remove"
                     data-action="click->upload-d-n-d--uploads#confirmDelete"
                     data-url="<%= UploadDND::Engine.routes.url_helpers.temporary_attachment_path(temp_attachment) %>"
-                    title="Supprimer">
-              <i class="fas fa-times"></i>
+                    title="<%= t('upload_d_n_d.delete_file') %>"
+                    aria-label="<%= t('upload_d_n_d.delete_file') %> : <%= blob.filename %>">
+              <i class="fas fa-times" aria-hidden="true"></i>
             </button>
           </div>
         </li>

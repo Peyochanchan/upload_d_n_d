@@ -135,27 +135,7 @@ module UploadDND
     end
 
     def mime_types_to_extensions(mime_types)
-      # Mapping MIME types vers extensions
-      mime_to_ext = {
-        "image/jpeg" => ".jpg",
-        "image/png" => ".png",
-        "image/gif" => ".gif",
-        "image/webp" => ".webp",
-        "image/svg+xml" => ".svg",
-        "application/pdf" => ".pdf",
-        "application/msword" => ".doc",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document" => ".docx",
-        "application/vnd.ms-excel" => ".xls",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" => ".xlsx",
-        "application/vnd.ms-powerpoint" => ".ppt",
-        "application/vnd.openxmlformats-officedocument.presentationml.presentation" => ".pptx",
-        "application/vnd.oasis.opendocument.text" => ".odt",
-        "text/plain" => ".txt",
-        "text/csv" => ".csv",
-        "application/zip" => ".zip"
-      }
-
-      mime_types.map { |mime| mime_to_ext[mime] || mime }.join(",")
+      UploadDND::MimeTypes.to_extensions(mime_types)
     end
 
     def get_attachments
