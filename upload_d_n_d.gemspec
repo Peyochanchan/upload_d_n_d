@@ -10,6 +10,8 @@ Gem::Specification.new do |spec|
   spec.description = "UploadDND fournit une interface drag & drop élégante et sécurisée pour vos uploads de fichiers dans Rails. Basé sur ActiveStorage, Stimulus et ViewComponent, il offre une validation serveur robuste, un support d'upload temporaire, et une intégration facile avec Pundit/CanCanCan."
   spec.license     = "MIT"
 
+  spec.required_ruby_version = ">= 3.2"
+
   spec.metadata["homepage_uri"] = spec.homepage
   spec.metadata["source_code_uri"] = "https://github.com/Peyochanchan/upload_d_n_d"
   spec.metadata["changelog_uri"] = "https://github.com/Peyochanchan/upload_d_n_d/blob/main/docs/CHANGELOG.md"
