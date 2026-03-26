@@ -5,8 +5,8 @@ module UploadDND
     extend ActiveSupport::Concern
 
     included do
-      before_action :authorize_upload!, only: [:create]
-      before_action :authorize_destroy!, only: [:destroy]
+      before_action :authorize_upload!, only: [ :create ]
+      before_action :authorize_destroy!, only: [ :destroy ]
     end
 
     private
@@ -41,7 +41,7 @@ module UploadDND
     def authorize_basic_upload!
       return if current_user.present?
 
-      render json: { error: 'Vous devez être connecté pour uploader des fichiers' },
+      render json: { error: "Vous devez être connecté pour uploader des fichiers" },
              status: :unauthorized
     end
 
@@ -49,7 +49,7 @@ module UploadDND
       # Vérifie que le fichier appartient à la session ou à l'utilisateur
       return if owner_matches_current_user?
 
-      render json: { error: 'Vous ne pouvez pas supprimer ce fichier' },
+      render json: { error: "Vous ne pouvez pas supprimer ce fichier" },
              status: :forbidden
     end
 

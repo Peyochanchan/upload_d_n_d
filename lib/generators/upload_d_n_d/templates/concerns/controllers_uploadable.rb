@@ -106,8 +106,8 @@ module UploadDND
               locals: { record: record, attribute_name: attribute_name }
             )
           end
-          format.json { render json: { status: 'ok' }, status: :ok }
-          format.html { redirect_back fallback_location: root_path, notice: 'Fichier mis à jour' }
+          format.json { render json: { status: "ok" }, status: :ok }
+          format.html { redirect_back fallback_location: root_path, notice: "Fichier mis à jour" }
         end
       end
     end

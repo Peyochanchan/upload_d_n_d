@@ -21,14 +21,14 @@ module UploadDND
     def initialize
       # Valeurs par défaut
       @max_size = 10.megabytes
-      @accepted_types = '.pdf,.doc,.docx,.jpg,.jpeg,.png,.gif'
+      @accepted_types = ".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif"
       @strict_mime_check = false
-      @main_color = '#E97451'
+      @main_color = "#E97451"
       @allow_anonymous_uploads = false
       @require_authentication = true # Par défaut, authentification requise
       @temporary_files_retention = 7 # jours
       @authorization_adapter = detect_authorization_adapter
-      @validator_class = 'FileValidator'
+      @validator_class = "FileValidator"
       @active_storage_service = nil # Utilise le service par défaut de Rails
       @on_upload_success = nil
       @on_upload_error = nil

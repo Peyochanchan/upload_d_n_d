@@ -20,8 +20,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_05_141000) do
     t.string "name", null: false
     t.bigint "record_id", null: false
     t.string "record_type", null: false
-    t.index ["blob_id"], name: "index_active_storage_attachments_on_blob_id"
-    t.index ["record_type", "record_id", "name", "blob_id"], name: "index_active_storage_attachments_uniqueness", unique: true
+    t.index [ "blob_id" ], name: "index_active_storage_attachments_on_blob_id"
+    t.index [ "record_type", "record_id", "name", "blob_id" ], name: "index_active_storage_attachments_uniqueness", unique: true
   end
 
   create_table "active_storage_blobs", force: :cascade do |t|
@@ -33,13 +33,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_05_141000) do
     t.string "key", null: false
     t.text "metadata"
     t.string "service_name", null: false
-    t.index ["key"], name: "index_active_storage_blobs_on_key", unique: true
+    t.index [ "key" ], name: "index_active_storage_blobs_on_key", unique: true
   end
 
   create_table "active_storage_variant_records", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
-    t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+    t.index [ "blob_id", "variation_digest" ], name: "index_active_storage_variant_records_uniqueness", unique: true
   end
 
   create_table "upload_d_n_d_temporary_attachments", force: :cascade do |t|
@@ -48,9 +48,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_05_141000) do
     t.string "session_id", null: false
     t.datetime "updated_at", null: false
     t.integer "user_id"
-    t.index ["session_id", "attribute_name"], name: "index_temp_attachments_on_session_and_attribute"
-    t.index ["session_id"], name: "index_upload_d_n_d_temporary_attachments_on_session_id"
-    t.index ["user_id"], name: "index_upload_d_n_d_temporary_attachments_on_user_id"
+    t.index [ "session_id", "attribute_name" ], name: "index_temp_attachments_on_session_and_attribute"
+    t.index [ "session_id" ], name: "index_upload_d_n_d_temporary_attachments_on_session_id"
+    t.index [ "user_id" ], name: "index_upload_d_n_d_temporary_attachments_on_user_id"
   end
 
   create_table "upload_dnd_temporary_attachments", force: :cascade do |t|
@@ -59,8 +59,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_05_141000) do
     t.string "session_id", null: false
     t.datetime "updated_at", null: false
     t.integer "user_id"
-    t.index ["session_id"], name: "index_upload_dnd_temporary_attachments_on_session_id"
-    t.index ["user_id"], name: "index_upload_dnd_temporary_attachments_on_user_id"
+    t.index [ "session_id" ], name: "index_upload_dnd_temporary_attachments_on_session_id"
+    t.index [ "user_id" ], name: "index_upload_dnd_temporary_attachments_on_user_id"
   end
 
   create_table "users", force: :cascade do |t|

@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Upload Performance',  type: :controller do
-  controller(UploadDND::TemporaryAttachmentsController) {}
+  controller(UploadDND::TemporaryAttachmentsController) { }
 
   routes { UploadDND::Engine.routes }
 

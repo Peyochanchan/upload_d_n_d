@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe UploadDND::BaseAttachmentsController, type: :controller do
   # On teste via TemporaryAttachmentsController qui hérite de BaseAttachmentsController
-  controller(UploadDND::TemporaryAttachmentsController) {}
+  controller(UploadDND::TemporaryAttachmentsController) { }
 
   routes { UploadDND::Engine.routes }
 

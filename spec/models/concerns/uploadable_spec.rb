@@ -39,14 +39,14 @@ RSpec.describe UploadDND::Uploadable do
           has_one_attached :avatar
           has_many_attached :documents
 
-          uploadable :avatar, content_type: ["image/png"], max_size: 1.megabyte
-          uploadable :documents, content_type: ["application/pdf"], max_size: 1.megabyte, max_files: 2
+          uploadable :avatar, content_type: [ "image/png" ], max_size: 1.megabyte
+          uploadable :documents, content_type: [ "application/pdf" ], max_size: 1.megabyte, max_files: 2
         end
       )
     end
 
     it "expose les options via uploadable_attributes" do
-      expect(UploadableDslUser.uploadable_attributes[:avatar][:content_type]).to eq(["image/png"])
+      expect(UploadableDslUser.uploadable_attributes[:avatar][:content_type]).to eq([ "image/png" ])
       expect(UploadableDslUser.uploadable_attributes[:documents][:max_files]).to eq(2)
     end
   end
@@ -62,8 +62,8 @@ RSpec.describe UploadDND::Uploadable do
           has_one_attached :avatar
           has_many_attached :documents
 
-          uploadable :avatar, content_type: ["image/png"], max_size: 1.megabyte
-          uploadable :documents, content_type: ["application/pdf"], max_size: 1.megabyte
+          uploadable :avatar, content_type: [ "image/png" ], max_size: 1.megabyte
+          uploadable :documents, content_type: [ "application/pdf" ], max_size: 1.megabyte
         end
       )
     end
@@ -145,8 +145,8 @@ RSpec.describe UploadDND::Uploadable do
           has_one_attached :avatar
           has_many_attached :documents
 
-          uploadable :avatar, content_type: ["image/png"], max_size: 1 # 1 byte
-          uploadable :documents, content_type: ["application/pdf"], max_size: 1.megabyte, max_files: 1
+          uploadable :avatar, content_type: [ "image/png" ], max_size: 1 # 1 byte
+          uploadable :documents, content_type: [ "application/pdf" ], max_size: 1.megabyte, max_files: 1
         end
       )
     end
@@ -177,4 +177,3 @@ RSpec.describe UploadDND::Uploadable do
     end
   end
 end
-

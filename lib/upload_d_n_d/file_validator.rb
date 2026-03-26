@@ -99,4 +99,3 @@ end
 
 # Alias top-level pour l'API `validates ..., file: ...`
 ::FileValidator = UploadDND::FileValidator unless defined?(::FileValidator)
-

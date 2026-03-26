@@ -18,11 +18,11 @@ module UploadDND
   # 3. Helper transfers temp files to real record and destroys TemporaryAttachment
   class TemporaryAttachmentsController < BaseAttachmentsController
     # Autorisation Pundit (si disponible)
-    before_action :authorize_upload!, only: [:create]
-    before_action :authorize_delete!, only: [:destroy]
+    before_action :authorize_upload!, only: [ :create ]
+    before_action :authorize_delete!, only: [ :destroy ]
 
-    before_action :find_temp_attachment, only: [:destroy]
-    before_action :validate_blob_constraints, only: [:create]
+    before_action :find_temp_attachment, only: [ :destroy ]
+    before_action :validate_blob_constraints, only: [ :create ]
 
     # POST /upload_d_n_d/temporary_attachments
     #
@@ -61,7 +61,7 @@ module UploadDND
       render_temp_file_list(attribute_name)
       log_upload_success
     rescue ActiveRecord::RecordInvalid => e
-      render_error(I18n.t('upload_d_n_d.errors.save_failed', errors: e.message), :unprocessable_entity)
+      render_error(I18n.t("upload_d_n_d.errors.save_failed", errors: e.message), :unprocessable_entity)
     end
 
     # DELETE /upload_d_n_d/temporary_attachments/:id
@@ -86,7 +86,7 @@ module UploadDND
 
       @temp_attachment = scope.find(params[:id])
     rescue ActiveRecord::RecordNotFound
-      render_error(I18n.t('upload_d_n_d.errors.file_not_found_or_denied'), :not_found)
+      render_error(I18n.t("upload_d_n_d.errors.file_not_found_or_denied"), :not_found)
     end
 
     def render_temp_file_list(attribute_name)
@@ -102,9 +102,9 @@ module UploadDND
         )
       else
         respond_to do |format|
-          format.json { render json: { status: 'ok', message: I18n.t('upload_d_n_d.success.file_uploaded') }, status: :ok }
-          format.html { redirect_back fallback_location: root_path, notice: I18n.t('upload_d_n_d.success.file_added') }
-          format.any { render json: { status: 'ok', message: I18n.t('upload_d_n_d.success.file_uploaded') }, status: :ok }
+          format.json { render json: { status: "ok", message: I18n.t("upload_d_n_d.success.file_uploaded") }, status: :ok }
+          format.html { redirect_back fallback_location: root_path, notice: I18n.t("upload_d_n_d.success.file_added") }
+          format.any { render json: { status: "ok", message: I18n.t("upload_d_n_d.success.file_uploaded") }, status: :ok }
         end
       end
     end
@@ -120,7 +120,7 @@ module UploadDND
       if max_size.present? && @blob.byte_size > max_size
         render_error(
           I18n.t(
-            'upload_d_n_d.errors.too_large',
+            "upload_d_n_d.errors.too_large",
             max_size: ActiveSupport::NumberHelper.number_to_human_size(max_size)
           ),
           :unprocessable_entity
@@ -132,7 +132,7 @@ module UploadDND
       if accepted_types.present? && !accepted_types.include?(@blob.content_type)
         render_error(
           I18n.t(
-            'upload_d_n_d.errors.invalid_type',
+            "upload_d_n_d.errors.invalid_type",
             types: UploadDND.configuration.accepted_types
           ),
           :unprocessable_entity
@@ -151,7 +151,7 @@ module UploadDND
       if detected_content_type.present? && !accepted_types.include?(detected_content_type)
         render_error(
           I18n.t(
-            'upload_d_n_d.errors.invalid_type',
+            "upload_d_n_d.errors.invalid_type",
             types: UploadDND.configuration.accepted_types
           ),
           :unprocessable_entity
@@ -161,14 +161,14 @@ module UploadDND
 
       if detected_content_type.present? && detected_content_type != @blob.content_type
         render_error(
-          I18n.t('upload_d_n_d.errors.suspicious_type'),
+          I18n.t("upload_d_n_d.errors.suspicious_type"),
           :unprocessable_entity
         )
-        return
+        nil
       end
     rescue StandardError => e
       render_error(
-        I18n.t('upload_d_n_d.errors.mime_detection_failed', message: e.message),
+        I18n.t("upload_d_n_d.errors.mime_detection_failed", message: e.message),
         :unprocessable_entity
       )
     end
@@ -195,7 +195,7 @@ module UploadDND
 
       authorize :upload_d_n_d_temporary_attachment, :create?
     rescue Pundit::NotAuthorizedError
-      render_error(I18n.t('upload_d_n_d.errors.unauthorized'), :forbidden)
+      render_error(I18n.t("upload_d_n_d.errors.unauthorized"), :forbidden)
     end
 
     def authorize_delete!
@@ -203,7 +203,7 @@ module UploadDND
 
       authorize :upload_d_n_d_temporary_attachment, :destroy?
     rescue Pundit::NotAuthorizedError
-      render_error(I18n.t('upload_d_n_d.errors.unauthorized'), :forbidden)
+      render_error(I18n.t("upload_d_n_d.errors.unauthorized"), :forbidden)
     end
   end
 end

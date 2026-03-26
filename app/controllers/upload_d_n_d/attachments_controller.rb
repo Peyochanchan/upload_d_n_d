@@ -43,18 +43,18 @@ module UploadDND
       begin
         record = GlobalID::Locator.locate(params[:record_gid])
       rescue ActiveRecord::RecordNotFound
-        render_error(I18n.t('upload_d_n_d.errors.blob_not_found'), :not_found)
+        render_error(I18n.t("upload_d_n_d.errors.blob_not_found"), :not_found)
         return
       end
 
       unless record
-        render_error(I18n.t('upload_d_n_d.errors.blob_not_found'), :not_found)
+        render_error(I18n.t("upload_d_n_d.errors.blob_not_found"), :not_found)
         return
       end
 
       # Vérification que l'attribut existe
       unless record.respond_to?(attribute_name)
-        render_error(I18n.t('upload_d_n_d.errors.invalid_attribute', attribute: attribute_name), :unprocessable_entity)
+        render_error(I18n.t("upload_d_n_d.errors.invalid_attribute", attribute: attribute_name), :unprocessable_entity)
         return
       end
 
@@ -72,7 +72,7 @@ module UploadDND
         # has_one_attached: remplacer (purge l'ancien automatiquement)
         record.send("#{attribute_name}=", @blob)
       else
-        render_error(I18n.t('upload_d_n_d.errors.not_active_storage_attachment', attribute: attribute_name), :unprocessable_entity)
+        render_error(I18n.t("upload_d_n_d.errors.not_active_storage_attachment", attribute: attribute_name), :unprocessable_entity)
         return
       end
 
@@ -81,17 +81,17 @@ module UploadDND
         render_file_list(record, attribute_name)
         log_upload_success
       else
-        render_error(I18n.t('upload_d_n_d.errors.save_failed', errors: record.errors.full_messages.join(", ")), :unprocessable_entity)
+        render_error(I18n.t("upload_d_n_d.errors.save_failed", errors: record.errors.full_messages.join(", ")), :unprocessable_entity)
       end
     rescue ActiveRecord::RecordInvalid => e
-      render_error(I18n.t('upload_d_n_d.errors.save_failed', errors: e.message), :unprocessable_entity)
+      render_error(I18n.t("upload_d_n_d.errors.save_failed", errors: e.message), :unprocessable_entity)
     end
 
     private
 
     def validate_record_gid_presence
       unless params[:record_gid].present?
-        render_error(I18n.t('upload_d_n_d.errors.record_gid_required'), :bad_request)
+        render_error(I18n.t("upload_d_n_d.errors.record_gid_required"), :bad_request)
         nil
       end
     end
@@ -105,9 +105,9 @@ module UploadDND
         )
       else
         respond_to do |format|
-          format.json { render json: { status: "ok", message: I18n.t('upload_d_n_d.success.file_added') }, status: :ok }
-          format.html { redirect_back fallback_location: root_path, notice: I18n.t('upload_d_n_d.success.file_added') }
-          format.any { render json: { status: "ok", message: I18n.t('upload_d_n_d.success.file_added') }, status: :ok }
+          format.json { render json: { status: "ok", message: I18n.t("upload_d_n_d.success.file_added") }, status: :ok }
+          format.html { redirect_back fallback_location: root_path, notice: I18n.t("upload_d_n_d.success.file_added") }
+          format.any { render json: { status: "ok", message: I18n.t("upload_d_n_d.success.file_added") }, status: :ok }
         end
       end
     end
@@ -121,7 +121,7 @@ module UploadDND
       # mais pour simplifier on garde la même policy que les temporaires
       authorize :upload_d_n_d_attachment, :create?
     rescue Pundit::NotAuthorizedError
-      render_error(I18n.t('upload_d_n_d.errors.unauthorized'), :forbidden)
+      render_error(I18n.t("upload_d_n_d.errors.unauthorized"), :forbidden)
     end
   end
 end

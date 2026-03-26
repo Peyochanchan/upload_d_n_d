@@ -32,9 +32,9 @@ module UploadDND
     rescue_from ActiveStorage::IntegrityError, with: :blob_integrity_error
     rescue_from ActionController::BadRequest, with: :bad_request_error
 
-    before_action :validate_params, only: [:create]
-    before_action :validate_signed_blob_id_format, only: [:create]
-    before_action :find_blob, only: [:create]
+    before_action :validate_params, only: [ :create ]
+    before_action :validate_signed_blob_id_format, only: [ :create ]
+    before_action :find_blob, only: [ :create ]
 
     protected
 
@@ -49,7 +49,7 @@ module UploadDND
       # Validation du nom d'attribut (alphanumeric + underscore uniquement)
       unless params[:attribute_name].match?(/\A[a-z_][a-z0-9_]*\z/)
         render_error(I18n.t("upload_d_n_d.errors.invalid_attribute_name"), :bad_request)
-        return
+        nil
       end
     end
 
@@ -67,7 +67,7 @@ module UploadDND
     end
 
     def render_turbo_stream_replace(target, partial:, locals:)
-      html = render_to_string(partial: partial, formats: [:html], locals: locals)
+      html = render_to_string(partial: partial, formats: [ :html ], locals: locals)
       turbo_stream_markup = %(<turbo-stream action="replace" target="#{ERB::Util.html_escape(target)}"><template>#{html}</template></turbo-stream>)
 
       render body: turbo_stream_markup, content_type: "text/vnd.turbo-stream.html"
@@ -108,8 +108,8 @@ module UploadDND
     def current_user
       # Tente de récupérer current_user depuis l'application hôte
       # En utilisant warden (Devise)
-      if defined?(Warden) && request.env['warden']
-        request.env['warden'].user
+      if defined?(Warden) && request.env["warden"]
+        request.env["warden"].user
       elsif respond_to?(:super, true)
         super
       else
@@ -125,7 +125,7 @@ module UploadDND
       elsif UploadDND.configuration.require_authentication
         unless current_user.present?
           render_error(I18n.t("upload_d_n_d.errors.authentication_required"), :unauthorized)
-          return
+          nil
         end
       end
     end
@@ -162,7 +162,7 @@ module UploadDND
              signed_blob_id.match?(/\A[A-Za-z0-9\-_+=]+\z/)
         Rails.logger.warn "UploadDND: Invalid signed_blob_id format attempted"
         render_error(I18n.t("upload_d_n_d.errors.invalid_file_token"), :unauthorized)
-        return
+        nil
       end
     end
 
@@ -171,10 +171,10 @@ module UploadDND
       filename = filename.to_s.strip
 
       # Remplace les caractères dangereux
-      filename = filename.gsub(/[^\w\.\-]/, '_')
+      filename = filename.gsub(/[^\w\.\-]/, "_")
 
       # Limite la longueur
-      filename = filename.truncate(255, omission: '')
+      filename = filename.truncate(255, omission: "")
 
       # Assure qu'il reste une extension
       filename = "file#{File.extname(filename)}" if filename.blank?

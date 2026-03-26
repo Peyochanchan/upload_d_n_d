@@ -52,9 +52,9 @@ module UploadDND
       attachments = record.send(attribute_name)
       return unless attachments.attached?
 
-      files = attachments.respond_to?(:each) ? attachments : [attachments]
+      files = attachments.respond_to?(:each) ? attachments : [ attachments ]
 
-      render partial: 'upload_d_n_d/shared/files_list',
+      render partial: "upload_d_n_d/shared/files_list",
              locals: { files: files, attribute_name: attribute_name }
     end
 
@@ -69,20 +69,20 @@ module UploadDND
       extension = File.extname(filename).downcase
 
       case extension
-      when '.pdf'
-        'fa-file-pdf'
-      when '.doc', '.docx'
-        'fa-file-word'
-      when '.xls', '.xlsx'
-        'fa-file-excel'
-      when '.jpg', '.jpeg', '.png', '.gif', '.svg'
-        'fa-file-image'
-      when '.zip', '.rar', '.7z'
-        'fa-file-archive'
-      when '.mp4', '.avi', '.mov'
-        'fa-file-video'
+      when ".pdf"
+        "fa-file-pdf"
+      when ".doc", ".docx"
+        "fa-file-word"
+      when ".xls", ".xlsx"
+        "fa-file-excel"
+      when ".jpg", ".jpeg", ".png", ".gif", ".svg"
+        "fa-file-image"
+      when ".zip", ".rar", ".7z"
+        "fa-file-archive"
+      when ".mp4", ".avi", ".mov"
+        "fa-file-video"
       else
-        'fa-file'
+        "fa-file"
       end
     end
 
@@ -90,15 +90,15 @@ module UploadDND
     def file_type_badge_class(content_type)
       case content_type
       when /^image\//
-        'badge-success'
+        "badge-success"
       when /^application\/pdf/
-        'badge-danger'
+        "badge-danger"
       when /^application\/.*word/
-        'badge-primary'
+        "badge-primary"
       when /^application\/.*excel/, /^application\/.*spreadsheet/
-        'badge-success'
+        "badge-success"
       else
-        'badge-secondary'
+        "badge-secondary"
       end
     end
   end

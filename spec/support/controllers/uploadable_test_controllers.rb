@@ -46,4 +46,3 @@ module Admin
     class ProjectsController < UploadableTestController; end
   end
 end
-

@@ -8,14 +8,14 @@ UploadDND.configure do |config|
 
   # Types de fichiers acceptés par défaut
   # Peut être surchargé au niveau du composant
-  config.accepted_types = '.pdf,.doc,.docx,.jpg,.jpeg,.png,.gif'
+  config.accepted_types = ".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif"
 
   # Vérification stricte du type MIME (anti-spoofing)
   # Analyse le contenu réel du fichier via Marcel (plus coûteux)
   # config.strict_mime_check = false
 
   # Couleur principale du thème (utilisée pour les boutons, progress bar, etc.)
-  config.main_color = '#E97451'
+  config.main_color = "#E97451"
 
   # Autoriser les uploads sans authentification (déconseillé en production)
   # config.allow_anonymous_uploads = false

@@ -40,14 +40,14 @@ module UploadDND
           :too_many_requests
         )
 
-        return false # Stop processing
+        false # Stop processing
       else
         # Ajoute les headers informatifs
         response.headers["X-RateLimit-Limit"] = max_requests.to_s
         response.headers["X-RateLimit-Remaining"] = (max_requests - count).to_s
         response.headers["X-RateLimit-Reset"] = (Time.current + period.seconds).to_i.to_s
 
-        return true # Continue processing
+        true # Continue processing
       end
     end
 

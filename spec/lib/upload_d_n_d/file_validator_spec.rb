@@ -36,7 +36,7 @@ RSpec.describe UploadDND::FileValidator do
     # Le validator appelle Array(value) et itère sur les blobs
     # Pour has_one_attached, on retourne le blob dans un array
     def to_ary
-      attached? ? [@blob] : []
+      attached? ? [ @blob ] : []
     end
   end
 
@@ -93,7 +93,7 @@ RSpec.describe UploadDND::FileValidator do
 
   describe "content_type validation" do
     before do
-      TestRecord.validates :avatar, file: { content_type: ["image/jpeg", "image/png"] }
+      TestRecord.validates :avatar, file: { content_type: [ "image/jpeg", "image/png" ] }
     end
 
     after do
@@ -113,7 +113,7 @@ RSpec.describe UploadDND::FileValidator do
 
     it "accepts multiple content types" do
       TestRecord.clear_validators!
-      TestRecord.validates :avatar, file: { content_type: ["image/jpeg", "application/pdf"] }
+      TestRecord.validates :avatar, file: { content_type: [ "image/jpeg", "application/pdf" ] }
 
       record.avatar.attach(image_blob)
       expect(record).to be_valid
@@ -126,7 +126,7 @@ RSpec.describe UploadDND::FileValidator do
     it "allows custom error message" do
       TestRecord.clear_validators!
       TestRecord.validates :avatar, file: {
-        content_type: ["image/jpeg"],
+        content_type: [ "image/jpeg" ],
         message: "doit être une image JPEG"
       }
 
@@ -216,7 +216,7 @@ RSpec.describe UploadDND::FileValidator do
   describe "combined validations" do
     before do
       TestRecord.validates :documents, file: {
-        content_type: ["image/jpeg", "image/png"],
+        content_type: [ "image/jpeg", "image/png" ],
         max_size: 5.megabytes,
         max_files: 2
       }
@@ -265,7 +265,7 @@ RSpec.describe UploadDND::FileValidator do
 
   describe "when no file is attached" do
     it "does not validate" do
-      TestRecord.validates :avatar, file: { content_type: ["image/jpeg"] }
+      TestRecord.validates :avatar, file: { content_type: [ "image/jpeg" ] }
 
       # avatar n'est pas attaché (MockAttachment sans blob)
       expect(record).to be_valid
@@ -277,7 +277,7 @@ RSpec.describe UploadDND::FileValidator do
   describe "strict_mime_check option" do
     before do
       TestRecord.validates :avatar, file: {
-        content_type: ["image/jpeg"],
+        content_type: [ "image/jpeg" ],
         strict_mime_check: true
       }
     end

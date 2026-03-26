@@ -2,7 +2,7 @@
 
 module UploadDND
   class TemporaryAttachment < ApplicationRecord
-    self.table_name = 'upload_d_n_d_temporary_attachments'
+    self.table_name = "upload_d_n_d_temporary_attachments"
 
     # Association avec ActiveStorage
     has_one_attached :blob
@@ -17,7 +17,7 @@ module UploadDND
     scope :for_user, ->(user_id) { where(user_id: user_id) }
     scope :expired, -> {
       retention_days = UploadDND.configuration.temporary_files_retention || 7
-      where('created_at < ?', retention_days.days.ago)
+      where("created_at < ?", retention_days.days.ago)
     }
     # Eager load blob attachments to prevent N+1 queries
     scope :with_blobs, -> { includes(blob_attachment: :blob) }

@@ -10,20 +10,20 @@ module UploadDND
       rescue_from ActiveStorage::IntegrityError do |_e|
         respond_to do |format|
           format.turbo_stream do
-            flash[:alert] = I18n.t('upload_d_n_d.errors.corrupted')
+            flash[:alert] = I18n.t("upload_d_n_d.errors.corrupted")
             render turbo_stream: turbo_stream.replace("flash_messages", partial: "shared/flashes")
           end
-          format.json { render json: { error: I18n.t('upload_d_n_d.errors.corrupted') }, status: :unprocessable_entity }
+          format.json { render json: { error: I18n.t("upload_d_n_d.errors.corrupted") }, status: :unprocessable_entity }
         end
       end
 
       rescue_from ActiveStorage::UnrepresentableError do |_e|
         respond_to do |format|
           format.turbo_stream do
-            flash[:alert] = I18n.t('upload_d_n_d.errors.unrepresentable')
+            flash[:alert] = I18n.t("upload_d_n_d.errors.unrepresentable")
             render turbo_stream: turbo_stream.replace("flash_messages", partial: "shared/flashes")
           end
-          format.json { render json: { error: I18n.t('upload_d_n_d.errors.unrepresentable') }, status: :unprocessable_entity }
+          format.json { render json: { error: I18n.t("upload_d_n_d.errors.unrepresentable") }, status: :unprocessable_entity }
         end
       end
     end
@@ -97,7 +97,7 @@ module UploadDND
       if record.save
         respond_to do |format|
           format.turbo_stream do
-            flash.now[:notice] = I18n.t('upload_d_n_d.success.file_added')
+            flash.now[:notice] = I18n.t("upload_d_n_d.success.file_added")
             render turbo_stream: [
               turbo_stream.replace(
                 "udnd_files_list_#{attribute_name}",
@@ -112,7 +112,7 @@ module UploadDND
       else
         respond_to do |format|
           format.turbo_stream do
-            flash.now[:alert] = I18n.t('upload_d_n_d.errors.save_failed', errors: record.errors.full_messages.join(", "))
+            flash.now[:alert] = I18n.t("upload_d_n_d.errors.save_failed", errors: record.errors.full_messages.join(", "))
             render turbo_stream: turbo_stream.replace("flash_messages", partial: "shared/flashes")
           end
           format.json { render json: { error: record.errors.full_messages }, status: :unprocessable_entity }
@@ -149,7 +149,7 @@ module UploadDND
 
         respond_to do |format|
           format.turbo_stream do
-            flash.now[:notice] = I18n.t('upload_d_n_d.success.file_removed')
+            flash.now[:notice] = I18n.t("upload_d_n_d.success.file_removed")
             render turbo_stream: [
               turbo_stream.replace(
                 "udnd_files_list_#{attribute_name}",
@@ -164,10 +164,10 @@ module UploadDND
       else
         respond_to do |format|
           format.turbo_stream do
-            flash.now[:alert] = I18n.t('upload_d_n_d.errors.file_not_found_or_denied')
+            flash.now[:alert] = I18n.t("upload_d_n_d.errors.file_not_found_or_denied")
             render turbo_stream: turbo_stream.replace("flash_messages", partial: "shared/flashes")
           end
-          format.json { render json: { error: I18n.t('upload_d_n_d.errors.blob_not_found') }, status: :not_found }
+          format.json { render json: { error: I18n.t("upload_d_n_d.errors.blob_not_found") }, status: :not_found }
         end
       end
     end

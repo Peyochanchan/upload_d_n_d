@@ -9,5 +9,3 @@ end
 ActiveSupport::Inflector.inflections(:fr) do |inflect|
   inflect.acronym "DND"
 end
-
-

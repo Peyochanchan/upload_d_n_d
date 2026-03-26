@@ -10,7 +10,7 @@ class CreateUploadDndTemporaryAttachments < ActiveRecord::Migration[8.1]
 
     add_index :upload_d_n_d_temporary_attachments, :session_id
     add_index :upload_d_n_d_temporary_attachments, :user_id
-    add_index :upload_d_n_d_temporary_attachments, [:session_id, :attribute_name],
-              name: 'index_temp_attachments_on_session_and_attribute'
+    add_index :upload_d_n_d_temporary_attachments, [ :session_id, :attribute_name ],
+              name: "index_temp_attachments_on_session_and_attribute"
   end
 end
