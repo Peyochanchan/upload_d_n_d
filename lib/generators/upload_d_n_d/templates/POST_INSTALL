@@ -1,6 +1,6 @@
 ===============================================================================
 
-  UploadDND v0.4.0 installé avec succès !
+  UploadDND v0.5.0 installé avec succès !
 
 ===============================================================================
 
@@ -15,27 +15,17 @@ Prochaines étapes :
      rails active_storage:install
      rails db:migrate
 
-  3. Vérifier que Stimulus est configuré :
+  3. Ajouter l'import JavaScript dans votre application.js :
 
-     Les contrôleurs Stimulus UploadDND ont été copiés dans :
-       app/javascript/controllers/upload_d_n_d/
+     import "upload_d_n_d"
 
-     - Si vous utilisez **Importmap** (cas le plus courant) et que votre
-       `app/javascript/controllers/index.js` est auto-généré
-       (vous verrez un commentaire du type "This file is auto-generated...") :
-       mettez à jour le manifest (recommandé) :
+     Les contrôleurs Stimulus sont auto-enregistrés depuis la gem.
 
-          bin/rails stimulus:manifest:update
+  4. Ajouter le CSS dans votre layout :
 
-     - Sinon, enregistrez manuellement les contrôleurs dans
-       app/javascript/controllers/index.js :
+     <%= stylesheet_link_tag "upload_d_n_d/application", media: "all" %>
 
-          import UploadDNDUploadsController from "./upload_d_n_d/uploads_controller"
-          application.register("upload-d-n-d--uploads", UploadDNDUploadsController)
-          import UploadDNDPreviewController from "./upload_d_n_d/preview_controller"
-          application.register("upload-d-n-d--preview", UploadDNDPreviewController)
-
-  4. (Optionnel) Configurer les policies Pundit :
+  5. (Optionnel) Configurer les policies Pundit :
 
      rails generate upload_d_n_d:policy
 
@@ -43,31 +33,30 @@ Prochaines étapes :
        - app/policies/upload_d_n_d_temporary_attachment_policy.rb
        - app/policies/upload_d_n_d_attachment_policy.rb
 
-  5. Utiliser le générateur de modèle (recommandé) :
+  6. Utiliser le générateur de modèle (recommandé) :
 
      rails g upload_d_n_d:model User --attribute=avatar
      rails g upload_d_n_d:model Project --attribute=documents --multiple --content_type=pdf docx xlsx
 
-  6. Utiliser dans vos vues :
+  7. Utiliser dans vos vues :
 
      <%= upload_field :avatar, record: @user %>
 
-  7. Architecture v0.4.0 :
+  8. Architecture v0.5.0 :
 
-     Les modules critiques sont fournis par le runtime de la gem :
+     Tout est servi directement depuis la gem :
        - UploadDND::Uploadable          (model concern)
        - UploadDND::Controllers::Uploadable (controller concern)
        - UploadDND::FileValidator        (file validation)
+       - Contrôleurs Stimulus            (auto-enregistrés via importmap)
+       - CSS                             (servi via asset pipeline)
+       - ViewComponent                   (servi depuis la gem)
 
-     NE CRÉEZ PAS de copies locales de ces fichiers, ils seraient
-     prioritaires sur la gem et empêcheraient les mises à jour.
+     Un simple `bundle update` suffit pour tout mettre à jour.
 
      Fichiers personnalisables (copiés dans votre app) :
        - app/controllers/concerns/upload_d_n_d/upload_authorization.rb
        - app/helpers/upload_d_n_d/upload_helper.rb
        - config/initializers/upload_d_n_d.rb
-
-     Pour mettre à jour :
-       rails g upload_d_n_d:update
 
 ===============================================================================

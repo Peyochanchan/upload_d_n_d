@@ -13,32 +13,17 @@ module UploadDND
       end
     end
 
-    # Cette ligne permet d'ajouter les assets de la gem au pipeline de l'app hôte
+    # Assets : JS (importmap) + CSS (asset pipeline)
     initializer "upload_d_n_d.assets" do |app|
+      # JS : rend les fichiers disponibles pour importmap
       app.config.assets.paths << root.join("app/javascript")
-      # Si l'app utilise Importmap, on "pin" le contrôleur
+
+      # CSS : rend upload_d_n_d/application.css disponible via stylesheet_link_tag
+      app.config.assets.paths << root.join("app/assets/stylesheets")
+
+      # Importmap : pin automatique des controllers Stimulus
       if app.config.respond_to?(:importmap)
         app.config.importmap.draw(root.join("config/importmap.rb"))
-      end
-    end
-
-    # Vérifie les mises à jour disponibles au démarrage de Rails
-    initializer "upload_d_n_d.check_updates", after: :load_config_initializers do
-      config.after_initialize do
-        # Ne s'exécute qu'en développement pour ne pas polluer les logs en production
-        next unless Rails.env.development?
-
-        # Charge le VersionTracker
-        require_relative "version_tracker"
-
-        # Affiche la notification si une mise à jour est disponible
-        if UploadDND::VersionTracker.update_available?
-          notice = UploadDND::VersionTracker.update_notice
-          if notice
-            # $stderr est plus fiable que puts pour afficher au démarrage
-            $stderr.puts "\n#{notice}\n"
-          end
-        end
       end
     end
   end

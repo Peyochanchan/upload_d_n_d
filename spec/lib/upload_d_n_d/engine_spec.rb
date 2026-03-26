@@ -33,29 +33,12 @@ RSpec.describe UploadDND::Engine do
 
       expect(app_config.assets.paths).to include(js_path)
     end
-  end
 
-  describe "check_updates initializer" do
-    context "in development environment" do
-      before do
-        allow(Rails).to receive(:env).and_return(ActiveSupport::StringInquirer.new("development"))
-      end
+    it "adds stylesheets path to asset pipeline" do
+      app_config = Rails.application.config
+      css_path = described_class.root.join("app/assets/stylesheets")
 
-      it "checks for updates in development" do
-        # Le système de vérification devrait être actif
-        expect(Rails.env.development?).to be true
-      end
-    end
-
-    context "in production environment" do
-      before do
-        allow(Rails).to receive(:env).and_return(ActiveSupport::StringInquirer.new("production"))
-      end
-
-      it "does not check for updates in production" do
-        # Le système de vérification ne devrait pas être actif
-        expect(Rails.env.development?).to be false
-      end
+      expect(app_config.assets.paths).to include(css_path)
     end
   end
 

@@ -37,16 +37,14 @@ rails generate upload_d_n_d:install
 Le générateur va :
 - Vérifier et ajouter `view_component` et `stimulus-rails` au Gemfile si nécessaire
 - Créer la migration pour les fichiers temporaires
-- Copier les contrôleurs Stimulus dans `app/javascript/controllers/upload_d_n_d/`
-  puis vous inviter à exécuter `bin/rails stimulus:manifest:update` (si votre manifest est auto-généré)
-- Copier les styles dans `app/assets/stylesheets/upload_d_n_d.css` (**sans** modifier votre stylesheet principal)
 - Installer le helper et le fichier d'autorisation (personnalisables)
-- Servir les vues directement depuis la gem (aucune vue copiée dans l'app hôte)
 - Monter les routes du moteur
 - Créer le fichier de configuration
 - (Optionnel) Générer la policy Pundit si Pundit est détecté
 
-> **Architecture v0.4.0** : Les modules critiques (`Uploadable`, `Controllers::Uploadable`, `FileValidator`) sont fournis par le runtime de la gem. Ne créez pas de copies locales.
+> **Architecture v0.5.0** : Tout est servi depuis la gem (JS, CSS, ViewComponent, concerns). Aucun fichier n'est copié dans l'app hôte (sauf le helper et l'autorisation, qui sont personnalisables). Un simple `bundle update` suffit pour mettre à jour.
+>
+> **Migration depuis v0.4.x ?** Voir le [guide de migration](docs/MIGRATION_0.5.md).
 
 ### 4. Lancez la migration
 

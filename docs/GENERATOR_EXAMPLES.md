@@ -398,9 +398,6 @@ bundle add upload_d_n_d
 
 # 2. Installer les dépendances
 rails g upload_d_n_d:install
-
-# (si Stimulus est utilisé avec manifest auto-généré)
-bin/rails stimulus:manifest:update
 rails db:migrate
 
 # 3. Créer un modèle

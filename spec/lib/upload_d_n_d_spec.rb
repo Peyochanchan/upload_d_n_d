@@ -65,8 +65,6 @@ RSpec.describe UploadDND do
       expect(defined?(UploadDND::Engine)).to be_truthy
     end
 
-    # VersionTracker is loaded on-demand by Engine, not autoloaded
-
     it "defines FileValidator class" do
       expect(defined?(UploadDND::FileValidator)).to be_truthy
     end

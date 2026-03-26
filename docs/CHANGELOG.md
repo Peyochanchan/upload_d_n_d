@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-03-26
+
+Refonte majeure de l'architecture : tous les assets (JS, CSS, ViewComponent) sont désormais servis directement depuis la gem. Plus besoin de copier des fichiers dans l'app hôte. Un simple `bundle update` suffit pour tout mettre à jour.
+
+### Changed
+- **Contrôleurs Stimulus** : servis depuis la gem via importmap, auto-enregistrés avec `import "upload_d_n_d"`
+- **CSS** : servi depuis la gem via l'asset pipeline (`stylesheet_link_tag "upload_d_n_d/application"`)
+- **ViewComponent** : servi directement depuis la gem (plus copié dans l'app)
+- **Install generator** : ne copie plus JS, CSS ni Component ; affiche uniquement les instructions d'import
+- **POST_INSTALL** : mis à jour pour refléter la nouvelle architecture
+
+### Removed
+- `VersionTracker` : plus besoin de tracker les versions des fichiers copiés (il n'y en a plus)
+- `UpdateGenerator` (`rails g upload_d_n_d:update`) : plus nécessaire
+- Fichier `.upload_d_n_d_version` dans l'app hôte : plus nécessaire
+- Documentation `UPDATE_SYSTEM.md` : obsolète
+
+### Added
+- Auto-enregistrement des contrôleurs Stimulus via `window.Stimulus`
+- Pin importmap `upload_d_n_d` comme point d'entrée unique
+- Détection et nettoyage des anciens fichiers copiés (STALE_OVERRIDES étendu)
+- Specs du install generator (20 tests)
+- Specs d'intégration engine assets (14 tests)
+
+### Migration depuis v0.4.x
+Voir le [guide de migration](MIGRATION_0.5.md) pour les instructions détaillées.
+
+## [0.4.1] - 2026-03-25
+
+### Changed
+- Bump version, require Ruby >= 3.2
+
+## [0.4.0] - 2026-03-24
+
+### Changed
+- Les modules critiques (`Uploadable`, `Controllers::Uploadable`, `FileValidator`) sont fournis par le runtime de la gem
+- Les vues sont servies directement depuis la gem
+- Remplacement des icônes Font Awesome par des SVG inline Lucide
+
+### Added
+- Système `VersionTracker` + `UpdateGenerator` pour synchroniser les fichiers copiés
+- Nettoyage automatique des anciennes copies (concerns) lors de l'installation
+
 ## [0.1.0] - 2026-01-05
 
 Première version stable de UploadDND, un système de drag & drop sécurisé pour Rails.
