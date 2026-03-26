@@ -16,11 +16,11 @@
           <div class="udnd-file-info">
             <span class="udnd-file-icon">
               <% if blob.image? %>
-                <i class="fas fa-file-image"></i>
+                <svg class="udnd-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><circle cx="10" cy="12" r="2"/><path d="m20 17-1.296-1.296a2.41 2.41 0 0 0-3.408 0L9 22"/></svg>
               <% elsif blob.content_type == 'application/pdf' %>
-                <i class="fas fa-file-pdf"></i>
+                <svg class="udnd-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
               <% else %>
-                <i class="fas fa-file"></i>
+                <svg class="udnd-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/></svg>
               <% end %>
             </span>
             <div class="udnd-file-details">
@@ -47,7 +47,7 @@
                       data-preview-content-type="<%= blob.content_type %>"
                       title="<%= t('upload_d_n_d.preview_file') %>"
                       aria-label="<%= t('upload_d_n_d.preview_file') %> : <%= blob.filename %>">
-                <i class="fas fa-eye" aria-hidden="true"></i>
+                <svg class="udnd-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
               </button>
             <% end %>
 
@@ -58,7 +58,7 @@
                     data-url="<%= delete_url %>"
                     title="<%= t('upload_d_n_d.delete_file') %>"
                     aria-label="<%= t('upload_d_n_d.delete_file') %> : <%= blob.filename %>">
-              <i class="fas fa-times" aria-hidden="true"></i>
+              <svg class="udnd-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
             </button>
           </div>
         </li>

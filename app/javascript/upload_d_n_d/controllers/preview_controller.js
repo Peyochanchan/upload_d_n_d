@@ -47,7 +47,7 @@ export default class extends Controller {
     } else {
       content.innerHTML = `
         <div class="udnd-preview-unsupported">
-          <i class="fas fa-file fa-3x"></i>
+          <svg class="udnd-icon udnd-icon-xl" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/></svg>
           <p>Aperçu non disponible pour ce type de fichier</p>
           <a href="${url}"
              download="${filename}"
@@ -82,7 +82,7 @@ export default class extends Controller {
                   class="udnd-preview-close"
                   data-action="click->upload-d-n-d--preview#close"
                   aria-label="Fermer">
-            <i class="fas fa-times"></i>
+            <svg class="udnd-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
           </button>
         </div>
         <div class="udnd-preview-body" data-preview-target="content"></div>

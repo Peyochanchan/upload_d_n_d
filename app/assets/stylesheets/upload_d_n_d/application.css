@@ -83,8 +83,22 @@
   box-shadow: 0 1px 0 rgba(17, 24, 39, 0.05);
 }
 
-.udnd-icon-wrapper i {
-  font-size: 1.35rem;
+/* Lucide inline SVG icons */
+.udnd-icon {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+  flex-shrink: 0;
+}
+
+.udnd-icon-lg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.udnd-icon-xl {
+  width: 3rem;
+  height: 3rem;
 }
 
 .udnd-text-main {
@@ -362,7 +376,7 @@
   color: var(--udnd-text-secondary);
 }
 
-.udnd-preview-unsupported i {
+.udnd-preview-unsupported svg {
   color: var(--udnd-text-secondary);
   opacity: 0.5;
 }
