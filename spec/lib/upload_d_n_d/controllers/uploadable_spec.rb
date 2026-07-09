@@ -181,6 +181,23 @@ RSpec.describe UploadableTestController, type: :controller do
         controller.send(:authorize_record_for_update, user)
       end
     end
+
+    context 'when authorize is a private method (Pundit::Authorization)' do
+      it 'still calls authorize instead of silently skipping authorization' do
+        # allow/expect définissent une méthode publique, ce qui masquait le
+        # bug : Pundit expose authorize en privé, et respond_to?(:authorize)
+        # sans include_all renvoyait false -> fail-open.
+        calls = []
+        controller.singleton_class.class_eval do
+          define_method(:authorize) { |record, query| calls << [ record, query ] }
+          private :authorize
+        end
+
+        controller.send(:authorize_record_for_update, user)
+
+        expect(calls).to eq([ [ user, :update? ] ])
+      end
+    end
   end
 
   describe '#attach_file' do
