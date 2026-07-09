@@ -233,16 +233,19 @@ export default class extends Controller {
   createModal(title, message, type, isConfirm, confirmText = "OK", cancelText = "Cancel") {
     return new Promise((resolve) => {
       // Overlay
+      // Listeners directs obligatoires : la modale est appendue à document.body,
+      // hors du scope de ce controller Stimulus — les data-action n'y sont jamais bindés
       const overlay = document.createElement('div')
       overlay.className = 'udnd-modal-overlay'
-      overlay.setAttribute('data-action', 'click->upload-d-n-d--uploads#closeModalOnOverlay')
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) this.cancelModal()
+      })
       overlay.setAttribute('role', 'dialog')
       overlay.setAttribute('aria-modal', 'true')
 
       // Modal
       const modal = document.createElement('div')
       modal.className = 'udnd-modal'
-      modal.setAttribute('data-action', 'click->upload-d-n-d--uploads#stopPropagation')
 
       // Header + icon
       const header = document.createElement('div')
@@ -272,13 +275,13 @@ export default class extends Controller {
         const cancelBtn = document.createElement('button')
         cancelBtn.type = 'button'
         cancelBtn.className = 'udnd-modal-button udnd-modal-button--cancel'
-        cancelBtn.setAttribute('data-action', 'click->upload-d-n-d--uploads#cancelModal')
+        cancelBtn.addEventListener('click', () => this.cancelModal())
         cancelBtn.textContent = cancelText
 
         const confirmBtn = document.createElement('button')
         confirmBtn.type = 'button'
         confirmBtn.className = 'udnd-modal-button udnd-modal-button--confirm'
-        confirmBtn.setAttribute('data-action', 'click->upload-d-n-d--uploads#confirmModal')
+        confirmBtn.addEventListener('click', () => this.confirmModal())
         confirmBtn.textContent = confirmText
 
         footer.appendChild(cancelBtn)
@@ -287,7 +290,7 @@ export default class extends Controller {
         const okBtn = document.createElement('button')
         okBtn.type = 'button'
         okBtn.className = 'udnd-modal-button udnd-modal-button--primary'
-        okBtn.setAttribute('data-action', 'click->upload-d-n-d--uploads#closeModal')
+        okBtn.addEventListener('click', () => this.closeModal())
         okBtn.textContent = confirmText
         footer.appendChild(okBtn)
       }
@@ -365,16 +368,6 @@ export default class extends Controller {
       document.removeEventListener('keydown', this.modalKeydownHandler)
       this.modalKeydownHandler = null
     }
-  }
-
-  closeModalOnOverlay(e) {
-    if (e.target.classList.contains('udnd-modal-overlay')) {
-      this.cancelModal()
-    }
-  }
-
-  stopPropagation(e) {
-    e.stopPropagation()
   }
 
   // Callback obligatoire pour DirectUpload (ActiveStorage)
