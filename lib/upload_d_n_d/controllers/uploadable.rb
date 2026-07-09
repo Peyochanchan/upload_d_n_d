@@ -57,8 +57,11 @@ module UploadDND
     #
     # @param record [ApplicationRecord] le record à autoriser
     def authorize_record_for_update(record)
-      # On vérifie si authorize est disponible (Pundit ou autre)
-      return unless respond_to?(:authorize)
+      # On vérifie si authorize est disponible (Pundit ou autre).
+      # include_all: true indispensable : Pundit::Authorization#authorize est
+      # privée — sans lui, respond_to? renvoie false et l'action s'exécute
+      # SANS autorisation (fail-open), avec un 500 verify_authorized après coup.
+      return unless respond_to?(:authorize, true)
 
       if (ns = controller_namespace)
         # Avec namespace : authorize [:admin, :internal, record], :update?
