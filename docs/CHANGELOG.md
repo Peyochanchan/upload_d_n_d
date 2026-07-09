@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-07-09
+
+Version issue d'un audit sécurité/qualité de la gem.
+
+### Security
+- **Modale de prévisualisation réécrite en DOM APIs** : corrige un XSS possible via un nom de fichier forgé interpolé dans `innerHTML` (breakout d'attribut)
+- **Rate limiting** : compteur atomique via `Rails.cache.increment` (le read + write laissait passer des requêtes concurrentes sous la limite)
+- **README** : nouvelle documentation sécurité — protection de l'endpoint DirectUpload (`/rails/active_storage/direct_uploads`, hors périmètre du rate limiting de la gem) et dimensionnement du rate limiting
+
+### Fixed
+- **Boutons des modales alert/confirm inertes** : les `data-action` posés sur du DOM appendu à `document.body` n'étaient jamais bindés par Stimulus (hors scope du controller) — remplacés par des event listeners directs ; le clic sur l'overlay pour fermer fonctionne désormais
+- Preview PDF via `<object>` avec fallback téléchargement natif (iframe vide sur Safari mobile auparavant)
+- Suppression des styles inline injectés en JS (compatibilité CSP `style-src` stricte)
+- `delete_url` des listes de fichiers construit via `polymorphic_path` (respecte namespaces, scopes de locale, `relative_url_root` ; échappe les query params)
+- Validation d'extension côté client en comparaison exacte (`.jpe` passait si `.jpeg` était accepté)
+
+### Added
+- **URLs de blobs via `resolve_model_to_route`** : la gem suit le réglage `config.active_storage.resolve_model_to_route` de l'app hôte — passez-le à `:rails_storage_proxy` pour servir les blobs en same-origin (CSP stricte, bucket S3-like externe), sans configuration côté gem
+- **`UploadDND::CleanupTemporaryAttachmentsJob`** : job de purge des fichiers temporaires expirés embarqué dans la gem (plus besoin de l'écrire côté app, il ne reste que la planification)
+- Accessibilité de la modale de prévisualisation : `role="dialog"`, `aria-modal`, `aria-labelledby`, focus trap, retour du focus au déclencheur
+- i18n des libellés de la modale de prévisualisation (fr + en)
+- Fermeture des modales sur `turbo:before-visit` (plus de modale orpheline après navigation)
+
+### Changed
+- Icônes de fichiers centralisées dans le partial `upload_d_n_d/shared/_file_icon` — surchargeable par l'app hôte en le shadowant
+
 ## [0.5.0] - 2026-03-26
 
 Refonte majeure de l'architecture : tous les assets (JS, CSS, ViewComponent) sont désormais servis directement depuis la gem. Plus besoin de copier des fichiers dans l'app hôte. Un simple `bundle update` suffit pour tout mettre à jour.

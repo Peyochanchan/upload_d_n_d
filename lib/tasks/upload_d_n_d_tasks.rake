@@ -16,5 +16,5 @@ namespace :upload_d_n_d do
 end
 
 if Rake::Task.task_defined?("javascript:build")
-  Rake::Task["javascript:build"].enhance(["upload_d_n_d:link_js"])
+  Rake::Task["javascript:build"].enhance([ "upload_d_n_d:link_js" ])
 end
