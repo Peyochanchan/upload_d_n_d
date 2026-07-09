@@ -71,3 +71,7 @@ en:
           text: "Do you really want to remove this file?"
           confirm_button: "Delete"
           cancel_button: "Cancel"
+      preview:
+        unavailable: "Preview not available for this file type"
+        download: "Download file"
+        close: "Close"

@@ -92,9 +92,11 @@ export default class extends Controller {
       return false
     }
 
-    // Validation de l'extension
+    // Validation de l'extension — comparaison exacte sur la liste,
+    // pas en substring (".jpe" ne doit pas passer parce que ".jpeg" est accepté)
     const ext = "." + file.name.split('.').pop().toLowerCase()
-    if (!this.acceptedTypesValue.includes(ext)) {
+    const acceptedExts = this.acceptedTypesValue.split(',').map(e => e.trim().toLowerCase())
+    if (!acceptedExts.includes(ext)) {
       const msg = this.i18nValue.alerts.invalidFormat
       this.showAlert(msg.title, msg.text.replace('%{accepted_types}', this.acceptedTypesValue), "error")
       return false

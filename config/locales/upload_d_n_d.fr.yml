@@ -71,3 +71,7 @@ fr:
           text: "Voulez-vous vraiment retirer ce fichier ?"
           confirm_button: "Supprimer"
           cancel_button: "Annuler"
+      preview:
+        unavailable: "Aperçu non disponible pour ce type de fichier"
+        download: "Télécharger le fichier"
+        close: "Fermer"
