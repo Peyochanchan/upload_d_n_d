@@ -404,6 +404,49 @@ uploadable :avatar,
            strict_mime_check: true
 ```
 
+### Rate limiting
+
+La gem embarque un rate limiting sur ses endpoints d'attachement
+(`POST /upload_d_n_d/attachments` et `/upload_d_n_d/temporary_attachments`),
+désactivé par défaut. Pour l'activer :
+
+```ruby
+UploadDND.configure do |config|
+  config.rate_limit_enabled = true
+  config.rate_limit_max_requests = 30   # par utilisateur+IP
+  config.rate_limit_period = 60         # secondes
+end
+```
+
+Dimensionnez `rate_limit_max_requests` en fonction de vos usages : un upload
+multiple déclenche une requête d'attachement **par fichier**. Une limite trop
+basse fera échouer les derniers fichiers d'un lot légitime (HTTP 429).
+
+Le compteur s'appuie sur `Rails.cache` : en production, utilisez un store
+partagé entre processus (Redis, Memcached, SolidCache) pour que la limite
+soit globale et non par worker.
+
+### ⚠️ Protéger l'endpoint DirectUpload
+
+Les fichiers sont téléversés via ActiveStorage DirectUpload, c'est-à-dire par
+`POST /rails/active_storage/direct_uploads` — une route de **votre
+application**, hors du périmètre de la gem. Le rate limiting ci-dessus ne la
+couvre pas : sans protection, un attaquant peut créer des blobs en masse et
+saturer votre stockage sans jamais toucher les endpoints de la gem.
+
+Protégez-la côté application, par exemple avec [rack-attack](https://github.com/rack/rack-attack) :
+
+```ruby
+# config/initializers/rack_attack.rb
+Rack::Attack.throttle("direct_uploads/ip", limit: 30, period: 1.minute) do |req|
+  req.ip if req.path == "/rails/active_storage/direct_uploads" && req.post?
+end
+```
+
+Pensez aussi au job de nettoyage des blobs orphelins (blobs créés par
+DirectUpload mais jamais attachés) : `ActiveStorage::Blob.unattached` +
+`purge_later` en tâche planifiée.
+
 ## Nettoyage automatique
 
 Ajoutez un job pour nettoyer les fichiers temporaires expirés :
