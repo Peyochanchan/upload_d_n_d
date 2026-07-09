@@ -41,6 +41,9 @@
                       data-preview-url="<%= main_app.polymorphic_path(blob, disposition: "inline") %>"
                       data-preview-filename="<%= blob.filename %>"
                       data-preview-content-type="<%= blob.content_type %>"
+                      data-preview-i18n-unavailable="<%= t('upload_d_n_d.javascript.preview.unavailable') %>"
+                      data-preview-i18n-download="<%= t('upload_d_n_d.javascript.preview.download') %>"
+                      data-preview-i18n-close="<%= t('upload_d_n_d.javascript.preview.close') %>"
                       title="<%= t('upload_d_n_d.preview_file') %>"
                       aria-label="<%= t('upload_d_n_d.preview_file') %> : <%= blob.filename %>">
                 <svg class="udnd-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>

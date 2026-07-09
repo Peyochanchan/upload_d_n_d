@@ -15,9 +15,17 @@ export default class extends Controller {
   open(event) {
     event.preventDefault()
 
-    const url = event.currentTarget.dataset.previewUrl
-    const filename = event.currentTarget.dataset.previewFilename
-    const contentType = event.currentTarget.dataset.previewContentType
+    const dataset = event.currentTarget.dataset
+    const url = dataset.previewUrl
+    const filename = dataset.previewFilename
+    const contentType = dataset.previewContentType
+
+    // Libellés i18n fournis par les partials (fallback français)
+    this.i18n = {
+      unavailable: dataset.previewI18nUnavailable || 'Aperçu non disponible pour ce type de fichier',
+      download: dataset.previewI18nDownload || 'Télécharger le fichier',
+      close: dataset.previewI18nClose || 'Fermer'
+    }
 
     this.showPreview(url, filename, contentType)
   }
@@ -81,14 +89,14 @@ export default class extends Controller {
     wrapper.appendChild(icon.firstElementChild)
 
     const message = document.createElement('p')
-    message.textContent = 'Aperçu non disponible pour ce type de fichier'
+    message.textContent = this.i18n.unavailable
     wrapper.appendChild(message)
 
     const link = document.createElement('a')
     link.className = 'udnd-btn-download'
     link.setAttribute('href', url)
     link.setAttribute('download', filename)
-    link.textContent = 'Télécharger le fichier'
+    link.textContent = this.i18n.download
     wrapper.appendChild(link)
 
     return wrapper
@@ -122,7 +130,7 @@ export default class extends Controller {
     const closeButton = document.createElement('button')
     closeButton.type = 'button'
     closeButton.className = 'udnd-preview-close'
-    closeButton.setAttribute('aria-label', 'Fermer')
+    closeButton.setAttribute('aria-label', this.i18n.close)
     closeButton.innerHTML = this.closeIcon() // SVG statique, sans donnée utilisateur
     closeButton.addEventListener('click', () => this.close())
     header.appendChild(closeButton)
