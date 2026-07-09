@@ -24,9 +24,11 @@
           </div>
 
           <%
-            # URL de suppression : utilise les routes de l'app hôte
-            # Format attendu : DELETE /:model_name/:id/remove_file
-            delete_url = "/#{record.class.name.underscore.pluralize}/#{record.id}/remove_file?file_id=#{attachment.id}&attribute_name=#{attribute_name}"
+            # URL de suppression : route membre remove_file de l'app hôte,
+            # basée sur polymorphic_path (respecte namespaces, scopes et
+            # relative_url_root, contrairement à un chemin construit à la main)
+            delete_params = { file_id: attachment.id, attribute_name: attribute_name }
+            delete_url = "#{main_app.polymorphic_path(record)}/remove_file?#{delete_params.to_query}"
           %>
 
           <div class="udnd-file-actions">
