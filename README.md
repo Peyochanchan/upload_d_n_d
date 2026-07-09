@@ -61,6 +61,28 @@ rails active_storage:install
 rails db:migrate
 ```
 
+#### URLs des blobs : redirect ou proxy
+
+Les URLs de prévisualisation et de téléchargement suivent le réglage standard
+`config.active_storage.resolve_model_to_route` de votre application :
+
+- `:rails_storage_redirect` (défaut Rails) — redirection vers une URL signée
+  temporaire du service de stockage (S3, etc.)
+- `:rails_storage_proxy` — les fichiers sont servis par votre application,
+  en same-origin
+
+Avec un bucket S3-like externe et une CSP stricte (`frame-src 'self'`,
+`img-src 'self'`), le mode redirect casse les prévisualisations. Passez en
+mode proxy :
+
+```ruby
+# config/application.rb ou config/environments/production.rb
+config.active_storage.resolve_model_to_route = :rails_storage_proxy
+```
+
+Aucune configuration côté gem : elle respecte ce réglage partout (previews,
+API JSON).
+
 ## Configuration
 
 Éditez `config/initializers/upload_d_n_d.rb` :

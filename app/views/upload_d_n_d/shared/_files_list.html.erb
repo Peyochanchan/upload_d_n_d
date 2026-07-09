@@ -42,7 +42,7 @@
                       class="udnd-btn-preview"
                       data-controller="upload-d-n-d--preview"
                       data-action="click->upload-d-n-d--preview#open"
-                      data-preview-url="<%= main_app.rails_blob_path(blob, disposition: "inline") %>"
+                      data-preview-url="<%= main_app.polymorphic_path(blob, disposition: "inline") %>"
                       data-preview-filename="<%= blob.filename %>"
                       data-preview-content-type="<%= blob.content_type %>"
                       title="<%= t('upload_d_n_d.preview_file') %>"
