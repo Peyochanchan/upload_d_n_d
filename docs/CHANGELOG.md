@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-07-09
+
+### Security
+- **Fail-open d'autorisation dans `Controllers::Uploadable`** : `authorize_record_for_update` testait `respond_to?(:authorize)` sans `include_all: true` — `Pundit::Authorization#authorize` étant privée, le check échouait et `attach_file`/`remove_file` s'exécutaient sans aucune vérification d'autorisation (puis 500 `verify_authorized` après exécution). Mise à jour fortement recommandée depuis 0.6.0 et antérieures.
+
 ## [0.6.0] - 2026-07-09
 
 Version issue d'un audit sécurité/qualité de la gem.
