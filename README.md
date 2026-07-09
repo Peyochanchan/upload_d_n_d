@@ -471,26 +471,17 @@ DirectUpload mais jamais attachés) : `ActiveStorage::Blob.unattached` +
 
 ## Nettoyage automatique
 
-Ajoutez un job pour nettoyer les fichiers temporaires expirés :
+La gem fournit `UploadDND::CleanupTemporaryAttachmentsJob`, qui purge les
+fichiers temporaires expirés (au-delà de `temporary_files_retention` jours).
+Aucun job à écrire côté app : il suffit de planifier sa récurrence.
 
-```ruby
-# app/jobs/cleanup_temporary_attachments_job.rb
-class CleanupTemporaryAttachmentsJob < ApplicationJob
-  queue_as :default
+Avec solid_queue (Rails 8+) :
 
-  def perform
-    UploadDND::TemporaryAttachment.cleanup_expired!
-  end
-end
-```
-
-Planifiez-le avec solid_queue (Rails 8+) :
-
-```ruby
+```yaml
 # config/recurring.yml
 production:
   cleanup_temporary_uploads:
-    class: CleanupTemporaryAttachmentsJob
+    class: UploadDND::CleanupTemporaryAttachmentsJob
     schedule: every day at 2am
     queue: background
 ```
@@ -504,10 +495,19 @@ SolidQueue.configure do |config|
     {
       key: "cleanup_temporary_uploads",
       schedule: "0 2 * * *", # Tous les jours à 2h du matin (cron syntax)
-      class: "CleanupTemporaryAttachmentsJob"
+      class: "UploadDND::CleanupTemporaryAttachmentsJob"
     }
   ]
 end
+```
+
+Ou avec sidekiq-cron :
+
+```yaml
+# config/schedule.yml
+cleanup_temporary_uploads:
+  cron: "0 2 * * *"
+  class: "UploadDND::CleanupTemporaryAttachmentsJob"
 ```
 
 ## Customisation du style
