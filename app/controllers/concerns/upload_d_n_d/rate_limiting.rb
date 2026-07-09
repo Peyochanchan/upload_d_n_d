@@ -62,16 +62,14 @@ module UploadDND
     def increment_rate_limit_counter(key)
       period = UploadDND.configuration.rate_limit_period
 
-      # Lit le compteur actuel ou initialise à 0
-      count = Rails.cache.read(key) || 0
-
-      # Incrémente le compteur
-      count += 1
-
-      # Écrit le nouveau compteur avec expiration
-      Rails.cache.write(key, count, expires_in: period.seconds)
-
-      count
+      # increment est atomique, contrairement à read + write qui laisse
+      # passer des requêtes concurrentes sous la barre du compteur.
+      # Certains stores (NullStore, Memcached sans clé existante) renvoient
+      # nil : on initialise alors le compteur en format raw.
+      Rails.cache.increment(key, 1, expires_in: period.seconds) || begin
+        Rails.cache.write(key, 1, raw: true, expires_in: period.seconds)
+        1
+      end
     end
 
     def rate_limit_reset_time(key)
