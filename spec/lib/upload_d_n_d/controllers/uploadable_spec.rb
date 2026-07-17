@@ -381,6 +381,33 @@ RSpec.describe Admin::ProjectsController, type: :controller do
 
       controller.send(:authorize_record_for_update, user)
     end
+
+    it 'falls back to the top-level policy when the namespaced one does not exist' do
+      # Cas réel : Projects::ConventionsController (module: :projects dans les
+      # routes) avec une ConventionPolicy top-level — pas de
+      # Projects::ConventionPolicy. Le namespace controller organise les
+      # routes, pas forcément les policies.
+      stub_const('Pundit::NotDefinedError', Class.new(StandardError))
+      calls = []
+      allow(controller).to receive(:authorize) do |target, query|
+        calls << [ target, query ]
+        raise Pundit::NotDefinedError if target.is_a?(Array)
+      end
+
+      controller.send(:authorize_record_for_update, user)
+
+      expect(calls).to eq([ [ [ :admin, user ], :update? ], [ user, :update? ] ])
+    end
+
+    it 'does not swallow other authorization errors' do
+      stub_const('Pundit::NotDefinedError', Class.new(StandardError))
+      not_authorized = Class.new(StandardError)
+      allow(controller).to receive(:authorize).and_raise(not_authorized)
+
+      expect {
+        controller.send(:authorize_record_for_update, user)
+      }.to raise_error(not_authorized)
+    end
   end
 end
 
