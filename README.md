@@ -379,6 +379,35 @@ end
 - Le concern `Uploadable` peut être inclus dans n'importe quel modèle
 - Les autorisations sont gérées au niveau du modèle (Pundit/CanCanCan)
 
+#### Records imbriqués ou resources singulières
+
+La liste de fichiers construit l'URL de suppression via
+`polymorphic_path(record)` : le record doit donc avoir une route
+polymorphique. C'est automatique pour un `resources :xxx` top-level (y
+compris namespacé), mais **pas** pour une resource imbriquée ou singulière.
+Dans ce cas, déclarez la résolution dans `config/routes.rb` avec
+[`resolve`](https://guides.rubyonrails.org/routing.html#using-resolve) — le
+mécanisme Rails prévu pour ça :
+
+```ruby
+# resource :convention (singulière), imbriquée sous resources :projects
+resolve("Convention") { |convention, options| route_for(:project_convention, convention.project, options) }
+
+# resources :documents imbriqué sous resources :projects
+resolve("Document") { |document, options| route_for(:project_document, document.project, document, options) }
+```
+
+> `resolve` se déclare au niveau racine du bloc `routes.draw`.
+
+Sans résolution possible, la gem lève `UploadDND::UnroutableRecordError`
+avec ces instructions (plutôt qu'un `undefined method 'xxx_path'` cryptique).
+
+Pour un routing vraiment exotique, le point d'extension officiel est le
+helper `udnd_remove_file_url(record, attachment, attribute_name)`, à
+redéfinir dans le `ApplicationHelper` de votre app. **Ne shadowez pas le
+partial `_files_list`** pour ça : un partial copié ne suit pas les mises à
+jour de la gem.
+
 ### 4. Autorisation (optionnel)
 
 #### Avec Pundit

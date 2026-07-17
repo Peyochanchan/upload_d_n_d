@@ -23,13 +23,7 @@
             </div>
           </div>
 
-          <%
-            # URL de suppression : route membre remove_file de l'app hôte,
-            # basée sur polymorphic_path (respecte namespaces, scopes et
-            # relative_url_root, contrairement à un chemin construit à la main)
-            delete_params = { file_id: attachment.id, attribute_name: attribute_name }
-            delete_url = "#{main_app.polymorphic_path(record)}/remove_file?#{delete_params.to_query}"
-          %>
+          <% delete_url = udnd_remove_file_url(record, attachment, attribute_name) %>
 
           <div class="udnd-file-actions">
             <%# Bouton de prévisualisation (images et PDFs uniquement) %>

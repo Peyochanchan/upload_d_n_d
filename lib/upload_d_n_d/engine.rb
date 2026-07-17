@@ -13,6 +13,15 @@ module UploadDND
       end
     end
 
+    # Helpers de la gem disponibles dans les vues de l'app hôte
+    # (les partials de la gem sont rendus depuis les controllers de l'app,
+    # qui n'incluent pas les helpers d'un engine isolé par défaut)
+    initializer "upload_d_n_d.helpers" do
+      ActiveSupport.on_load(:action_controller_base) do
+        helper UploadDND::Engine.helpers
+      end
+    end
+
     # Assets : JS (importmap) + CSS (asset pipeline)
     initializer "upload_d_n_d.assets" do |app|
       # JS : rend les fichiers disponibles pour importmap
