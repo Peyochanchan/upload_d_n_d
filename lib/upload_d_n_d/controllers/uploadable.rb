@@ -63,12 +63,19 @@ module UploadDND
       # SANS autorisation (fail-open), avec un 500 verify_authorized après coup.
       return unless respond_to?(:authorize, true)
 
-      if (ns = controller_namespace)
-        # Avec namespace : authorize [:admin, :internal, record], :update?
-        ns_symbols = ns.underscore.split("/").map(&:to_sym)
+      ns = controller_namespace
+      return authorize(record, :update?) unless ns
+
+      # Avec namespace controller : essayer d'abord la policy namespacée
+      # (authorize [:admin, record] -> Admin::RecordPolicy), puis fallback
+      # sur la policy top-level. Un namespace de controller (module: dans
+      # les routes) ne reflète pas forcément celui des policies.
+      ns_symbols = ns.underscore.split("/").map(&:to_sym)
+      begin
         authorize [ *ns_symbols, record ], :update?
-      else
-        # Sans namespace : authorize record, :update?
+      rescue StandardError => e
+        raise unless defined?(Pundit::NotDefinedError) && e.is_a?(Pundit::NotDefinedError)
+
         authorize record, :update?
       end
     end
