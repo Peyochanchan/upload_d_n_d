@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-07-17
+
+Support des records en resources imbriquées ou singulières (ex. `resource :convention` sous `resources :projects`).
+
+### Added
+- **`UploadDND::UnroutableRecordError`** : quand un record affiché dans la liste de fichiers n'a pas de route polymorphique, la gem lève une erreur explicite contenant le remède (déclarer `resolve()` dans `config/routes.rb`, exemple inclus) au lieu d'un `undefined method 'xxx_path'` cryptique
+- **Helper `udnd_remove_file_url(record, attachment, attribute_name)`** : point d'extension officiel pour l'URL de suppression, surchargeable dans le `ApplicationHelper` de l'app — ne shadowez plus le partial `_files_list` pour ça
+- Section README « Records imbriqués ou resources singulières » (pattern `resolve`)
+
+### Fixed
+- **`authorize_record_for_update` : fallback sur la policy top-level** quand la policy namespacée n'existe pas. Le concern cherchait la policy dans le namespace du controller (`Projects::ConventionsController` → `Projects::ConventionPolicy`) alors qu'un `module:` de routes n'implique pas un namespace de policies — `Pundit::NotDefinedError` déclenche désormais une seconde tentative sur la policy top-level (`ConventionPolicy`). Les autres erreurs d'autorisation ne sont pas avalées.
+
 ## [0.6.1] - 2026-07-09
 
 ### Security
