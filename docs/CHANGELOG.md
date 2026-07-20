@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-07-17
+
+La suppression de fichiers passe par le moteur de la gem, comme l'upload : **plus aucune route requise côté app**, quel que soit le routing du record (imbriqué, singulier, namespacé). Les `resolve()` déclarés pour la gem deviennent inutiles (ils restent utiles au routing polymorphique du reste de votre app).
+
+### Changed
+- **⚠️ `config.delete_route` par défaut `:engine`** : l'UI de suppression appelle `DELETE /upload_d_n_d/attachments/:id` (moteur) au lieu de la route membre `remove_file` de l'app. Les actions `remove_file` custom ne sont plus appelées par l'UI — branchez `config.on_file_removed` ou repassez en `config.delete_route = :host` (flux legacy inchangé)
+- `UploadDND::UnroutableRecordError` et le pattern `resolve()` ne concernent plus que le mode `:host`
+
+### Added
+- **`AttachmentsController#destroy`** : suppression par `record_gid`, autorisation fail-closed via la policy Pundit du record (`update?`) avec fallback sur la policy générique de la gem, vérification d'appartenance attachment ↔ record ↔ attribut
+- **`config.on_file_removed`** : callback `->(record, attribute_name, user)` après suppression
+- **`config.delete_route`** : `:engine` (défaut) / `:host` (legacy)
+
 ## [0.6.2] - 2026-07-17
 
 Support des records en resources imbriquées ou singulières (ex. `resource :convention` sous `resources :projects`).
