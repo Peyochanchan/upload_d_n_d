@@ -25,6 +25,7 @@ module UploadDND
     before_action :authorize_upload!, only: [ :create ]
 
     before_action :validate_record_gid_presence, only: [ :create ]
+    before_action :validate_destroy_params, only: [ :destroy ]
 
     # POST /upload_d_n_d/attachments
     #
@@ -87,7 +88,72 @@ module UploadDND
       render_error(I18n.t("upload_d_n_d.errors.save_failed", errors: e.message), :unprocessable_entity)
     end
 
+    # DELETE /upload_d_n_d/attachments/:id
+    #
+    # Détache un fichier d'un record existant, sans dépendre des routes de
+    # l'app hôte (contrairement au flux legacy remove_file du concern
+    # Controllers::Uploadable). Symétrique du POST #create.
+    #
+    # Params:
+    # - id: Integer (ActiveStorage::Attachment id)
+    # - record_gid: String (GlobalID du record)
+    # - attribute_name: String (ex: "avatar", "documents")
+    def destroy
+      record = GlobalID::Locator.locate(params[:record_gid])
+
+      unless record
+        render_error(I18n.t("upload_d_n_d.errors.record_not_found"), :not_found)
+        return
+      end
+
+      authorize_destroy!(record)
+      return if performed?
+
+      attachment = ActiveStorage::Attachment.find_by(id: params[:id])
+      attribute_name = params[:attribute_name]
+
+      # Sécurité : le fichier doit appartenir au record ET à l'attribut annoncés
+      if attachment && attachment.record == record && attachment.name == attribute_name.to_s
+        attachment.purge_later
+        record.reload
+
+        UploadDND.configuration.on_file_removed&.call(record, attribute_name, current_user)
+
+        render_file_list(record, attribute_name)
+      else
+        render_error(I18n.t("upload_d_n_d.errors.file_not_found_or_denied"), :not_found)
+      end
+    end
+
     private
+
+    def validate_destroy_params
+      unless params[:record_gid].present? && params[:attribute_name].present?
+        render_error(I18n.t("upload_d_n_d.errors.missing_params"), :bad_request)
+        return
+      end
+
+      unless params[:attribute_name].match?(/\A[a-z_][a-z0-9_]*\z/)
+        render_error(I18n.t("upload_d_n_d.errors.invalid_attribute_name"), :bad_request)
+        nil
+      end
+    end
+
+    # Autorisation de la suppression : policy Pundit du record (update?),
+    # avec fallback sur la policy générique de la gem si le modèle n'a pas
+    # de policy. Fail-closed : sans policy du tout, Pundit::NotDefinedError
+    # remonte en 500 plutôt que de laisser passer.
+    def authorize_destroy!(record)
+      return unless pundit_enabled?
+
+      begin
+        authorize record, :update?
+      rescue Pundit::NotDefinedError
+        authorize :upload_d_n_d_attachment, :destroy?
+      end
+    rescue Pundit::NotAuthorizedError
+      render_error(I18n.t("upload_d_n_d.errors.unauthorized"), :forbidden)
+    end
 
     def validate_record_gid_presence
       unless params[:record_gid].present?

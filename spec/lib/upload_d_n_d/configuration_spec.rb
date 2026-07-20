@@ -37,6 +37,14 @@ RSpec.describe UploadDND::Configuration do
     it 'sets default rate_limit_period' do
       expect(config.rate_limit_period).to eq(60)
     end
+
+    it 'sets default delete_route to :engine' do
+      expect(config.delete_route).to eq(:engine)
+    end
+
+    it 'sets default on_file_removed' do
+      expect(config.on_file_removed).to be_nil
+    end
   end
 
   describe 'custom configuration' do
