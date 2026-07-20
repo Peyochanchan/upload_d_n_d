@@ -110,6 +110,13 @@ UploadDND.configure do |config|
   config.on_upload_success = ->(blob, user) {
     Rails.logger.info "File uploaded: #{blob.filename} by #{user&.email}"
   }
+  config.on_file_removed = ->(record, attribute_name, user) {
+    Rails.logger.info "File removed from #{record.class}##{record.id} by #{user&.id}"
+  }
+
+  # Route de suppression : :engine (défaut, aucune route requise côté app)
+  # ou :host (legacy, route membre remove_file de votre app)
+  # config.delete_route = :engine
 end
 ```
 
@@ -379,9 +386,41 @@ end
 - Le concern `Uploadable` peut être inclus dans n'importe quel modèle
 - Les autorisations sont gérées au niveau du modèle (Pundit/CanCanCan)
 
-#### Records imbriqués ou resources singulières
+#### Suppression de fichiers : par le moteur (défaut) ou par vos routes
 
-La liste de fichiers construit l'URL de suppression via
+Depuis la v0.7, la suppression d'un fichier passe par défaut par le moteur
+de la gem (`DELETE /upload_d_n_d/attachments/:id` + `record_gid`), comme
+l'upload : **aucune route requise côté app**, quel que soit le routing du
+record (imbriqué, singulier, namespacé). L'autorisation utilise la policy
+Pundit du record (`update?`), avec fallback sur
+`UploadDND::AttachmentPolicy#destroy?` si le modèle n'a pas de policy.
+
+Pour brancher de la logique après suppression :
+
+```ruby
+UploadDND.configure do |config|
+  config.on_file_removed = ->(record, attribute_name, user) {
+    Rails.logger.info "File removed from #{record.class}##{record.id} (#{attribute_name}) by #{user&.id}"
+  }
+end
+```
+
+Le flux historique (suppression via la route membre `remove_file` de votre
+app et le concern `Controllers::Uploadable`) reste disponible :
+
+```ruby
+UploadDND.configure do |config|
+  config.delete_route = :host # défaut : :engine
+end
+```
+
+Utilisez-le si vos actions `remove_file` contiennent de la logique custom
+que `on_file_removed` ne couvre pas. Le reste de cette section ne concerne
+que ce mode `:host`.
+
+#### Records imbriqués ou resources singulières (mode `:host` uniquement)
+
+En mode `:host`, la liste de fichiers construit l'URL de suppression via
 `polymorphic_path(record)` : le record doit donc avoir une route
 polymorphique. C'est automatique pour un `resources :xxx` top-level (y
 compris namespacé), mais **pas** pour une resource imbriquée ou singulière.

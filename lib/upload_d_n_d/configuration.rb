@@ -14,6 +14,8 @@ module UploadDND
                   :active_storage_service,
                   :on_upload_success,
                   :on_upload_error,
+                  :on_file_removed,
+                  :delete_route,
                   :rate_limit_enabled,
                   :rate_limit_max_requests,
                   :rate_limit_period
@@ -32,6 +34,13 @@ module UploadDND
       @active_storage_service = nil # Utilise le service par défaut de Rails
       @on_upload_success = nil
       @on_upload_error = nil
+      @on_file_removed = nil
+      # :engine (défaut) : la suppression passe par le moteur de la gem,
+      #   aucune route requise côté app (symétrique de l'upload).
+      # :host (legacy) : la suppression passe par la route membre remove_file
+      #   de l'app (concern Controllers::Uploadable) — nécessite une route
+      #   polymorphique pour le record (cf. README, "Records imbriqués").
+      @delete_route = :engine
       @rate_limit_enabled = false
       @rate_limit_max_requests = 10
       @rate_limit_period = 60 # secondes

@@ -2,16 +2,28 @@
 
 module UploadDND
   module ApplicationHelper
-    # URL de suppression d'un fichier attaché, construite sur la route membre
-    # remove_file du record (convention : resources :xxx + member remove_file).
+    # URL de suppression d'un fichier attaché.
     #
-    # Point d'extension officiel : redéfinissez cette méthode dans le
-    # ApplicationHelper de votre app pour un routing exotique. Pour les
-    # resources imbriquées ou singulières, préférez déclarer un resolve()
-    # dans config/routes.rb — voir README, section "Records imbriqués".
+    # Mode :engine (défaut) : route DELETE du moteur de la gem, identifiée
+    # par record_gid — aucune route requise côté app, quel que soit le
+    # routing du record (imbriqué, singulier, namespacé).
+    #
+    # Mode :host (legacy, config.delete_route = :host) : route membre
+    # remove_file du record côté app (convention : resources + member
+    # remove_file). Nécessite une route polymorphique — voir README,
+    # section "Records imbriqués". Point d'extension : redéfinissez cette
+    # méthode dans le ApplicationHelper de votre app.
     def udnd_remove_file_url(record, attachment, attribute_name)
-      query = { file_id: attachment.id, attribute_name: attribute_name }.to_query
-      "#{udnd_record_path(record)}/remove_file?#{query}"
+      if UploadDND.configuration.delete_route == :host
+        query = { file_id: attachment.id, attribute_name: attribute_name }.to_query
+        "#{udnd_record_path(record)}/remove_file?#{query}"
+      else
+        UploadDND::Engine.routes.url_helpers.attachment_path(
+          attachment.id,
+          record_gid: record.to_global_id.to_s,
+          attribute_name: attribute_name
+        )
+      end
     end
 
     def udnd_record_path(record)

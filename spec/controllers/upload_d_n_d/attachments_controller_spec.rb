@@ -206,6 +206,131 @@ RSpec.describe UploadDND::AttachmentsController, type: :controller do
     end
   end
 
+  describe 'DELETE #destroy' do
+    before do
+      request.headers['Accept'] = 'text/vnd.turbo-stream.html'
+      user.avatar.attach(blob)
+    end
+
+    let(:attachment) { user.avatar_attachment }
+    let(:valid_params) do
+      {
+        id: attachment.id,
+        record_gid: user.to_global_id.to_s,
+        attribute_name: 'avatar'
+      }
+    end
+
+    it 'detaches the file from the record' do
+      expect {
+        delete :destroy, params: valid_params, format: :turbo_stream
+      }.to change { user.reload.avatar.attached? }.from(true).to(false)
+    end
+
+    it 'returns a turbo stream response replacing the files list' do
+      delete :destroy, params: valid_params, format: :turbo_stream
+
+      expect(response.content_type).to include('text/vnd.turbo-stream.html')
+      expect(response.body).to include('udnd_files_list_avatar')
+    end
+
+    it 'calls the on_file_removed callback' do
+      calls = []
+      UploadDND.configure do |config|
+        config.on_file_removed = ->(record, attribute_name, current_user) { calls << [ record, attribute_name ] }
+      end
+
+      delete :destroy, params: valid_params, format: :turbo_stream
+
+      expect(calls).to eq([ [ user, 'avatar' ] ])
+    end
+
+    context 'security checks' do
+      it 'refuses when the attachment belongs to another record' do
+        other_user = create(:user)
+        other_blob = ActiveStorage::Blob.create_and_upload!(
+          io: StringIO.new("other"), filename: 'other.png', content_type: 'image/png'
+        )
+        other_user.avatar.attach(other_blob)
+
+        delete :destroy, params: {
+          id: other_user.avatar_attachment.id,
+          record_gid: user.to_global_id.to_s,
+          attribute_name: 'avatar'
+        }, format: :json
+
+        expect(response).to have_http_status(:not_found)
+        expect(other_user.reload.avatar.attached?).to be true
+      end
+
+      it 'refuses when attribute_name does not match the attachment' do
+        delete :destroy, params: valid_params.merge(attribute_name: 'documents'), format: :json
+
+        expect(response).to have_http_status(:not_found)
+        expect(user.reload.avatar.attached?).to be true
+      end
+
+      it 'returns not_found when the record does not exist' do
+        delete :destroy, params: valid_params.merge(record_gid: 'gid://dummy/User/99999'), format: :json
+
+        expect(response).to have_http_status(:not_found)
+      end
+
+      it 'returns bad_request when record_gid is missing' do
+        delete :destroy, params: { id: attachment.id, attribute_name: 'avatar' }, format: :json
+
+        expect(response).to have_http_status(:bad_request)
+      end
+
+      it 'returns bad_request for invalid attribute_name format' do
+        delete :destroy, params: valid_params.merge(attribute_name: 'Invalid-Name!'), format: :json
+
+        expect(response).to have_http_status(:bad_request)
+      end
+    end
+
+    context 'authorization with Pundit' do
+      before do
+        stub_const('Pundit', Module.new)
+        stub_const('Pundit::NotDefinedError', Class.new(StandardError))
+        stub_const('Pundit::NotAuthorizedError', Class.new(StandardError))
+        UploadDND.configure { |config| config.authorization_adapter = :pundit }
+      end
+
+      it 'authorizes via the record policy (update?)' do
+        calls = []
+        controller.singleton_class.define_method(:authorize) { |target, query| calls << [ target, query ] }
+
+        delete :destroy, params: valid_params, format: :turbo_stream
+
+        expect(calls).to eq([ [ user, :update? ] ])
+      end
+
+      it 'falls back to the gem policy when the record has no policy' do
+        calls = []
+        controller.singleton_class.define_method(:authorize) do |target, query|
+          calls << [ target, query ]
+          raise Pundit::NotDefinedError if target.is_a?(User)
+        end
+
+        delete :destroy, params: valid_params, format: :turbo_stream
+
+        expect(calls).to eq([ [ user, :update? ], [ :upload_d_n_d_attachment, :destroy? ] ])
+      end
+
+      it 'renders forbidden and keeps the file when not authorized' do
+        controller.singleton_class.define_method(:authorize) do |_target, _query|
+          raise Pundit::NotAuthorizedError
+        end
+
+        delete :destroy, params: valid_params, format: :json
+
+        expect(response).to have_http_status(:forbidden)
+        expect(user.reload.avatar.attached?).to be true
+      end
+    end
+  end
+
   describe 'error handling' do
     it 'handles ActiveRecord::RecordNotFound' do
       allow(ActiveStorage::Blob).to receive(:find_signed).and_raise(ActiveRecord::RecordNotFound)
