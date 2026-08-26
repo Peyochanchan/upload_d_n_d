@@ -12,6 +12,7 @@ module UploadDND
   # - GET /upload_d_n_d/temporary_attachments?attribute_name=x (liste de la session courante)
   # - POST /upload_d_n_d/temporary_attachments (lors de l'upload)
   # - DELETE /upload_d_n_d/temporary_attachments/:id (suppression avant soumission)
+  # - DELETE /upload_d_n_d/temporary_attachments?attribute_name=x (purge, ex: annulation du formulaire)
   #
   # Workflow:
   # 1. User upload file in form (no record yet) → create TemporaryAttachment
@@ -20,7 +21,7 @@ module UploadDND
   class TemporaryAttachmentsController < BaseAttachmentsController
     # Autorisation Pundit (si disponible)
     before_action :authorize_upload!, only: [ :create ]
-    before_action :authorize_delete!, only: [ :destroy ]
+    before_action :authorize_delete!, only: [ :destroy, :purge ]
 
     before_action :find_temp_attachment, only: [ :destroy ]
     before_action :validate_blob_constraints, only: [ :create ]
@@ -99,6 +100,26 @@ module UploadDND
 
       render_temp_file_list(attribute_name)
       log_deletion
+    end
+
+    # DELETE /upload_d_n_d/temporary_attachments?attribute_name=documents
+    #
+    # Purge tous les fichiers temporaires de la session courante pour cet attribut.
+    # Typiquement appelé par le bouton « Annuler » d'un formulaire de création,
+    # pour que les fichiers déposés ne réapparaissent pas au prochain formulaire.
+    #
+    # Sécurité: scopé sur la session courante uniquement. Renvoie 204.
+    def purge
+      attribute_name = params[:attribute_name].to_s
+      return render_error(I18n.t("upload_d_n_d.errors.missing_params"), :bad_request) if attribute_name.blank?
+      return render_error(I18n.t("upload_d_n_d.errors.invalid_attribute_name"), :bad_request) unless attribute_name.match?(ATTRIBUTE_NAME_FORMAT)
+
+      purged = TemporaryAttachment.for_session(current_session_id)
+                                   .for_attribute(attribute_name)
+                                   .destroy_all
+
+      Rails.logger.info "UploadDND: #{purged.size} temporary file(s) purged - #{attribute_name} by #{current_user&.id || 'anonymous'}"
+      head :no_content
     end
 
     private

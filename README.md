@@ -322,6 +322,25 @@ GET /upload_d_n_d/temporary_attachments?attribute_name=documents
 Réponse : le partial `<div id="udnd_files_list_documents">…</div>`, limité aux fichiers
 de la session courante. `400` sans `attribute_name` valide.
 
+**Annulation du formulaire** : les fichiers déposés restent liés à la session jusqu'à
+purge automatique (`temporary_files_retention`). Pour qu'ils ne réapparaissent pas
+dans le formulaire suivant quand l'utilisateur annule, purgez-les explicitement :
+
+```
+DELETE /upload_d_n_d/temporary_attachments?attribute_name=documents   → 204
+```
+
+Par exemple depuis un bouton « Annuler » :
+
+```js
+fetch("/upload_d_n_d/temporary_attachments?attribute_name=documents", {
+  method: "DELETE",
+  headers: { "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content }
+}).then(() => Turbo.visit(backUrl))
+```
+
+Scopé sur la session courante ; soumis à la policy `destroy?` si Pundit est activé.
+
 ### 3. Utilisation dans différents namespaces
 
 UploadDND fonctionne de manière transparente dans **tous les namespaces** de votre application :
