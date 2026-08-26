@@ -67,11 +67,11 @@ module UploadDND
       if record&.persisted?
         get_attachments
       else
-        # Logique de récupération temporaire via la table dédiée de la gem
-        UploadDND::TemporaryAttachment.where(
-          session_id: helpers.session.id.to_s,
-          attribute_name: attribute_name
-        )
+        # Fichiers temporaires de la session courante (formulaire sans record persisté)
+        UploadDND::TemporaryAttachment
+          .for_session(helpers.session.id.to_s)
+          .for_attribute(attribute_name)
+          .with_blobs
       end
     end
 

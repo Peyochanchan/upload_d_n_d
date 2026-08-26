@@ -5,5 +5,5 @@ UploadDND::Engine.routes.draw do
   resources :attachments, only: [ :create, :destroy ]
 
   # Routes pour les attachments temporaires
-  resources :temporary_attachments, only: [ :create, :destroy ]
+  resources :temporary_attachments, only: [ :index, :create, :destroy ]
 end

@@ -308,6 +308,20 @@ end
 **Sécurité** : `wire_temporary_uploads` vérifie que le `session_id` correspond à la session actuelle.
 Le `temp_upload_session_id` utilise une variable d'instance privée (`@_temp_upload_session_id`).
 
+**Persistance au rechargement** : les fichiers temporaires sont liés à la session. Si
+l'utilisateur recharge la page (F5, restauration de brouillon, reconnexion), le
+composant affiche à nouveau les fichiers déjà déposés — rien à faire côté app.
+
+Si votre formulaire remplace la zone sans repasser par `upload_field` (Turbo Frame,
+formulaire multi-étapes…), vous pouvez récupérer le HTML de la liste vous-même :
+
+```
+GET /upload_d_n_d/temporary_attachments?attribute_name=documents
+```
+
+Réponse : le partial `<div id="udnd_files_list_documents">…</div>`, limité aux fichiers
+de la session courante. `400` sans `attribute_name` valide.
+
 ### 3. Utilisation dans différents namespaces
 
 UploadDND fonctionne de manière transparente dans **tous les namespaces** de votre application :

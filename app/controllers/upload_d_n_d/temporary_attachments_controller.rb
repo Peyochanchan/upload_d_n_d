@@ -9,6 +9,7 @@ module UploadDND
   # - Renvoyer la liste des fichiers temporaires pour mise à jour UI
   #
   # Utilisé par:
+  # - GET /upload_d_n_d/temporary_attachments?attribute_name=x (liste de la session courante)
   # - POST /upload_d_n_d/temporary_attachments (lors de l'upload)
   # - DELETE /upload_d_n_d/temporary_attachments/:id (suppression avant soumission)
   #
@@ -23,6 +24,29 @@ module UploadDND
 
     before_action :find_temp_attachment, only: [ :destroy ]
     before_action :validate_blob_constraints, only: [ :create ]
+
+    # GET /upload_d_n_d/temporary_attachments?attribute_name=documents
+    #
+    # Renvoie le HTML du partial `temp_files_list` pour les fichiers temporaires
+    # de la session courante (ex: restaurer la zone après un rechargement de page
+    # sans repasser par le composant).
+    #
+    # Sécurité: pas d'autorisation Pundit — le scope par session_id est le filtre.
+    # Un utilisateur ne peut voir que ses propres fichiers temporaires.
+    def index
+      attribute_name = params[:attribute_name].to_s
+      return render_error(I18n.t("upload_d_n_d.errors.missing_params"), :bad_request) if attribute_name.blank?
+      return render_error(I18n.t("upload_d_n_d.errors.invalid_attribute_name"), :bad_request) unless attribute_name.match?(ATTRIBUTE_NAME_FORMAT)
+
+      files = TemporaryAttachment.for_session(current_session_id)
+                                  .for_attribute(attribute_name)
+                                  .with_blobs
+
+      render partial: "upload_d_n_d/shared/temp_files_list",
+             formats: [ :html ],
+             locals: { files: files, attribute_name: attribute_name },
+             layout: false
+    end
 
     # POST /upload_d_n_d/temporary_attachments
     #

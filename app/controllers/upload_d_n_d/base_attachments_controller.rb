@@ -18,6 +18,9 @@ module UploadDND
     # Inclure le rate limiting
     include UploadDND::RateLimiting
 
+    # Nom d'attribut autorisé (alphanumérique + underscore uniquement)
+    ATTRIBUTE_NAME_FORMAT = /\A[a-z_][a-z0-9_]*\z/
+
     # Protection CSRF (désactivée uniquement en test)
     skip_before_action :verify_authenticity_token, if: -> { Rails.env.test? }
 
@@ -47,7 +50,7 @@ module UploadDND
       end
 
       # Validation du nom d'attribut (alphanumeric + underscore uniquement)
-      unless params[:attribute_name].match?(/\A[a-z_][a-z0-9_]*\z/)
+      unless params[:attribute_name].match?(ATTRIBUTE_NAME_FORMAT)
         render_error(I18n.t("upload_d_n_d.errors.invalid_attribute_name"), :bad_request)
         nil
       end

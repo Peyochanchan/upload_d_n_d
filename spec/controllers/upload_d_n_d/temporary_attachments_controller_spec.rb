@@ -26,6 +26,66 @@ RSpec.describe UploadDND::TemporaryAttachmentsController, type: :controller do
     UploadDND.reset_configuration!
   end
 
+  describe 'GET #index' do
+    render_views
+
+    let(:other_session_id) { SecureRandom.uuid }
+
+    def create_temp_attachment(session:, attribute:, filename:)
+      temp = UploadDND::TemporaryAttachment.create!(session_id: session, attribute_name: attribute)
+      temp.blob.attach(io: StringIO.new("data"), filename: filename, content_type: 'image/png')
+      temp
+    end
+
+    it 'renders the temporary files of the current session' do
+      create_temp_attachment(session: session_id, attribute: 'documents', filename: 'mine.png')
+
+      get :index, params: { attribute_name: 'documents' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('id="udnd_files_list_documents"')
+      expect(response.body).to include('mine.png')
+    end
+
+    it 'renders an empty list when the session has no temporary files' do
+      get :index, params: { attribute_name: 'documents' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('id="udnd_files_list_documents"')
+      expect(response.body).to include('udnd-no-files')
+      expect(response.body).not_to include('udnd-file-item')
+    end
+
+    it 'does not leak files from another session' do
+      create_temp_attachment(session: other_session_id, attribute: 'documents', filename: 'theirs.png')
+
+      get :index, params: { attribute_name: 'documents' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).not_to include('theirs.png')
+    end
+
+    it 'only lists files of the requested attribute' do
+      create_temp_attachment(session: session_id, attribute: 'avatar', filename: 'avatar.png')
+
+      get :index, params: { attribute_name: 'documents' }
+
+      expect(response.body).not_to include('avatar.png')
+    end
+
+    it 'returns 400 without attribute_name' do
+      get :index
+
+      expect(response).to have_http_status(:bad_request)
+    end
+
+    it 'returns 400 with an invalid attribute_name' do
+      get :index, params: { attribute_name: 'Documents; DROP' }
+
+      expect(response).to have_http_status(:bad_request)
+    end
+  end
+
   describe 'POST #create' do
     context 'with valid params' do
       before do
