@@ -142,14 +142,7 @@ module UploadDND
     # === Helpers de session ===
 
     def current_session_id
-      sid =
-        if session.respond_to?(:id)
-          session.id
-        else
-          session[:id] || session["id"]
-        end
-
-      sid.to_s
+      UploadDND::SessionId.for(session)
     end
 
     # === Validation de sécurité ===

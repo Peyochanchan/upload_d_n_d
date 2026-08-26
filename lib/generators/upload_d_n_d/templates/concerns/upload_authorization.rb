@@ -65,7 +65,7 @@ module UploadDND
 
     def owner_matches_current_user?
       if @temp_attachment
-        @temp_attachment.session_id == session.id.to_s ||
+        @temp_attachment.session_id == UploadDND::SessionId.for(session) ||
           @temp_attachment.user_id == current_user&.id
       elsif @attachment
         @attachment.record.user_id == current_user&.id if @attachment.record.respond_to?(:user_id)

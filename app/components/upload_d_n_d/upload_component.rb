@@ -69,7 +69,7 @@ module UploadDND
       else
         # Fichiers temporaires de la session courante (formulaire sans record persisté)
         UploadDND::TemporaryAttachment
-          .for_session(helpers.session.id.to_s)
+          .for_session(UploadDND::SessionId.for(helpers.session))
           .for_attribute(attribute_name)
           .with_blobs
       end

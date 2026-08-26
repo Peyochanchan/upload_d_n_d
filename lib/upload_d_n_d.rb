@@ -3,6 +3,7 @@
 require "upload_d_n_d/version"
 require "upload_d_n_d/engine"
 require "upload_d_n_d/configuration"
+require "upload_d_n_d/session_id"
 require "upload_d_n_d/file_validator"
 require "upload_d_n_d/mime_types"
 require "upload_d_n_d/uploadable"

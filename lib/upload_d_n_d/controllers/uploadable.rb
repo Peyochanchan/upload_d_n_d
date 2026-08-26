@@ -34,7 +34,7 @@ module UploadDND
     # @param record [ApplicationRecord] le record sur lequel wirer le session_id
     def wire_temporary_uploads(record)
       sid = params[:temp_upload_session_id]
-      if sid.present? && sid == session.id.to_s
+      if sid.present? && sid == UploadDND::SessionId.for(session)
         record.temp_upload_session_id = sid
       end
     end
@@ -47,7 +47,7 @@ module UploadDND
     def attach_upload_d_n_d_files(record, attribute_name)
       # Délègue au modèle TemporaryAttachment pour éviter la duplication
       UploadDND::TemporaryAttachment.attach_to_record(
-        session.id.to_s,
+        UploadDND::SessionId.for(session),
         record,
         { attribute_name.to_s => attribute_name }
       )
