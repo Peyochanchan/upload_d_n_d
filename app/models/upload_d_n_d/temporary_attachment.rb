@@ -94,7 +94,12 @@ module UploadDND
     end
 
     def url
-      Rails.application.routes.url_helpers.rails_blob_path(blob, only_path: true) if blob.attached?
+      # polymorphic_url respecte config.active_storage.resolve_model_to_route
+      # de l'app hôte (:rails_storage_redirect par défaut, :rails_storage_proxy
+      # pour servir les blobs en same-origin — CSP stricte, bucket externe).
+      # only_path: true explicite : la forme _path ne le propage pas aux
+      # routes `resolve` d'ActiveStorage hors contexte de requête.
+      Rails.application.routes.url_helpers.polymorphic_url(blob.blob, only_path: true) if blob.attached?
     end
 
     private

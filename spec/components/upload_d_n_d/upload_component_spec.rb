@@ -358,5 +358,39 @@ RSpec.describe UploadDND::UploadComponent, type: :component do
       result = render_inline(component)
       expect(result.to_html).to be_present
     end
+
+    context "without a persisted record" do
+      let(:session_id) { SecureRandom.uuid }
+      let(:component) { described_class.new(attribute_name: :documents) }
+
+      before do
+        allow_any_instance_of(ActionDispatch::Request).to receive(:session)
+          .and_return(instance_double(ActionDispatch::Request::Session, id: session_id))
+      end
+
+      def create_temp_attachment(session:, filename:)
+        temp = UploadDND::TemporaryAttachment.create!(session_id: session, attribute_name: "documents")
+        temp.blob.attach(io: StringIO.new("data"), filename: filename, content_type: "image/png")
+        temp
+      end
+
+      it "renders the temporary files of the current session (restores the zone after a reload)" do
+        create_temp_attachment(session: session_id, filename: "draft.png")
+
+        html = render_inline(component).to_html
+
+        expect(html).to include('id="udnd_files_list_documents"')
+        expect(html).to include("draft.png")
+      end
+
+      it "does not render temporary files from another session" do
+        create_temp_attachment(session: SecureRandom.uuid, filename: "theirs.png")
+
+        html = render_inline(component).to_html
+
+        expect(html).not_to include("theirs.png")
+        expect(html).to include("udnd-no-files")
+      end
+    end
   end
 end

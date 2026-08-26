@@ -15,13 +15,7 @@
         <li class="udnd-file-item" id="<%= dom_id(attachment) %>">
           <div class="udnd-file-info">
             <span class="udnd-file-icon">
-              <% if blob.image? %>
-                <svg class="udnd-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><circle cx="10" cy="12" r="2"/><path d="m20 17-1.296-1.296a2.41 2.41 0 0 0-3.408 0L9 22"/></svg>
-              <% elsif blob.content_type == 'application/pdf' %>
-                <svg class="udnd-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
-              <% else %>
-                <svg class="udnd-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/></svg>
-              <% end %>
+              <%= render "upload_d_n_d/shared/file_icon", blob: blob %>
             </span>
             <div class="udnd-file-details">
               <span class="udnd-filename"><%= blob.filename.to_s.truncate(30) %></span>
@@ -29,11 +23,7 @@
             </div>
           </div>
 
-          <%
-            # URL de suppression : utilise les routes de l'app hôte
-            # Format attendu : DELETE /:model_name/:id/remove_file
-            delete_url = "/#{record.class.name.underscore.pluralize}/#{record.id}/remove_file?file_id=#{attachment.id}&attribute_name=#{attribute_name}"
-          %>
+          <% delete_url = udnd_remove_file_url(record, attachment, attribute_name) %>
 
           <div class="udnd-file-actions">
             <%# Bouton de prévisualisation (images et PDFs uniquement) %>
@@ -42,9 +32,12 @@
                       class="udnd-btn-preview"
                       data-controller="upload-d-n-d--preview"
                       data-action="click->upload-d-n-d--preview#open"
-                      data-preview-url="<%= main_app.rails_blob_path(blob, disposition: "inline") %>"
+                      data-preview-url="<%= main_app.polymorphic_path(blob, disposition: "inline") %>"
                       data-preview-filename="<%= blob.filename %>"
                       data-preview-content-type="<%= blob.content_type %>"
+                      data-preview-i18n-unavailable="<%= t('upload_d_n_d.javascript.preview.unavailable') %>"
+                      data-preview-i18n-download="<%= t('upload_d_n_d.javascript.preview.download') %>"
+                      data-preview-i18n-close="<%= t('upload_d_n_d.javascript.preview.close') %>"
                       title="<%= t('upload_d_n_d.preview_file') %>"
                       aria-label="<%= t('upload_d_n_d.preview_file') %> : <%= blob.filename %>">
                 <svg class="udnd-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>

@@ -34,7 +34,7 @@ module UploadDND
     # @param record [ApplicationRecord] le record sur lequel wirer le session_id
     def wire_temporary_uploads(record)
       sid = params[:temp_upload_session_id]
-      if sid.present? && sid == session.id.to_s
+      if sid.present? && sid == UploadDND::SessionId.for(session)
         record.temp_upload_session_id = sid
       end
     end
@@ -47,7 +47,7 @@ module UploadDND
     def attach_upload_d_n_d_files(record, attribute_name)
       # Délègue au modèle TemporaryAttachment pour éviter la duplication
       UploadDND::TemporaryAttachment.attach_to_record(
-        session.id.to_s,
+        UploadDND::SessionId.for(session),
         record,
         { attribute_name.to_s => attribute_name }
       )
@@ -57,15 +57,25 @@ module UploadDND
     #
     # @param record [ApplicationRecord] le record à autoriser
     def authorize_record_for_update(record)
-      # On vérifie si authorize est disponible (Pundit ou autre)
-      return unless respond_to?(:authorize)
+      # On vérifie si authorize est disponible (Pundit ou autre).
+      # include_all: true indispensable : Pundit::Authorization#authorize est
+      # privée — sans lui, respond_to? renvoie false et l'action s'exécute
+      # SANS autorisation (fail-open), avec un 500 verify_authorized après coup.
+      return unless respond_to?(:authorize, true)
 
-      if (ns = controller_namespace)
-        # Avec namespace : authorize [:admin, :internal, record], :update?
-        ns_symbols = ns.underscore.split("/").map(&:to_sym)
+      ns = controller_namespace
+      return authorize(record, :update?) unless ns
+
+      # Avec namespace controller : essayer d'abord la policy namespacée
+      # (authorize [:admin, record] -> Admin::RecordPolicy), puis fallback
+      # sur la policy top-level. Un namespace de controller (module: dans
+      # les routes) ne reflète pas forcément celui des policies.
+      ns_symbols = ns.underscore.split("/").map(&:to_sym)
+      begin
         authorize [ *ns_symbols, record ], :update?
-      else
-        # Sans namespace : authorize record, :update?
+      rescue StandardError => e
+        raise unless defined?(Pundit::NotDefinedError) && e.is_a?(Pundit::NotDefinedError)
+
         authorize record, :update?
       end
     end

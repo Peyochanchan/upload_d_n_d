@@ -132,6 +132,16 @@ RSpec.describe UploadDND::RateLimiting do
       # Vérifie que la clé existe
       expect(Rails.cache.exist?(test_key)).to be true
     end
+
+    it "initializes the counter when the store cannot increment a missing key" do
+      # Memcached (et NullStore) renvoient nil sur increment d'une clé absente
+      allow(Rails.cache).to receive(:increment).and_return(nil)
+
+      count = controller.send(:increment_rate_limit_counter, test_key)
+
+      expect(count).to eq(1)
+      expect(Rails.cache.read(test_key, raw: true).to_i).to eq(1)
+    end
   end
 
   describe "#check_rate_limit" do

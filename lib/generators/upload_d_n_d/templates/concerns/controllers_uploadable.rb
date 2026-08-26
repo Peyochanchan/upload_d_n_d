@@ -90,7 +90,7 @@ module UploadDND
       #   wire_temporary_uploads(@record)
       def wire_temporary_uploads(record)
         sid = params[:temp_upload_session_id]
-        if sid.present? && sid == session.id.to_s
+        if sid.present? && sid == UploadDND::SessionId.for(session)
           record.temp_upload_session_id = sid
         end
       end

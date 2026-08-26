@@ -26,6 +26,147 @@ RSpec.describe UploadDND::TemporaryAttachmentsController, type: :controller do
     UploadDND.reset_configuration!
   end
 
+  describe 'GET #index' do
+    render_views
+
+    let(:other_session_id) { SecureRandom.uuid }
+
+    def create_temp_attachment(session:, attribute:, filename:)
+      temp = UploadDND::TemporaryAttachment.create!(session_id: session, attribute_name: attribute)
+      temp.blob.attach(io: StringIO.new("data"), filename: filename, content_type: 'image/png')
+      temp
+    end
+
+    it 'renders the temporary files of the current session' do
+      create_temp_attachment(session: session_id, attribute: 'documents', filename: 'mine.png')
+
+      get :index, params: { attribute_name: 'documents' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('id="udnd_files_list_documents"')
+      expect(response.body).to include('mine.png')
+    end
+
+    it 'renders an empty list when the session has no temporary files' do
+      get :index, params: { attribute_name: 'documents' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('id="udnd_files_list_documents"')
+      expect(response.body).to include('udnd-no-files')
+      expect(response.body).not_to include('udnd-file-item')
+    end
+
+    it 'does not leak files from another session' do
+      create_temp_attachment(session: other_session_id, attribute: 'documents', filename: 'theirs.png')
+
+      get :index, params: { attribute_name: 'documents' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).not_to include('theirs.png')
+    end
+
+    it 'only lists files of the requested attribute' do
+      create_temp_attachment(session: session_id, attribute: 'avatar', filename: 'avatar.png')
+
+      get :index, params: { attribute_name: 'documents' }
+
+      expect(response.body).not_to include('avatar.png')
+    end
+
+    it 'returns 400 without attribute_name' do
+      get :index
+
+      expect(response).to have_http_status(:bad_request)
+    end
+
+    it 'returns 400 with an invalid attribute_name' do
+      get :index, params: { attribute_name: 'Documents; DROP' }
+
+      expect(response).to have_http_status(:bad_request)
+    end
+  end
+
+  describe 'DELETE #purge' do
+    def create_temp_attachment(session:, attribute:)
+      temp = UploadDND::TemporaryAttachment.create!(session_id: session, attribute_name: attribute)
+      temp.blob.attach(io: StringIO.new("data"), filename: 'f.png', content_type: 'image/png')
+      temp
+    end
+
+    it 'destroys all temporary files of the current session for the attribute and returns 204' do
+      create_temp_attachment(session: session_id, attribute: 'documents')
+      create_temp_attachment(session: session_id, attribute: 'documents')
+
+      expect {
+        delete :purge, params: { attribute_name: 'documents' }
+      }.to change(UploadDND::TemporaryAttachment, :count).by(-2)
+
+      expect(response).to have_http_status(:no_content)
+    end
+
+    it 'purges the attached blobs' do
+      temp = create_temp_attachment(session: session_id, attribute: 'documents')
+      blob_id = temp.blob.blob.id
+
+      delete :purge, params: { attribute_name: 'documents' }
+
+      expect(ActiveStorage::Blob.exists?(blob_id)).to be(false)
+    end
+
+    it 'returns 204 when there is nothing to purge' do
+      delete :purge, params: { attribute_name: 'documents' }
+
+      expect(response).to have_http_status(:no_content)
+    end
+
+    it 'does not touch files of another session' do
+      other = create_temp_attachment(session: SecureRandom.uuid, attribute: 'documents')
+
+      delete :purge, params: { attribute_name: 'documents' }
+
+      expect(UploadDND::TemporaryAttachment.exists?(other.id)).to be(true)
+    end
+
+    it 'does not touch files of another attribute' do
+      other = create_temp_attachment(session: session_id, attribute: 'avatar')
+
+      delete :purge, params: { attribute_name: 'documents' }
+
+      expect(UploadDND::TemporaryAttachment.exists?(other.id)).to be(true)
+    end
+
+    it 'returns 400 without attribute_name' do
+      delete :purge
+
+      expect(response).to have_http_status(:bad_request)
+    end
+
+    it 'returns 400 with an invalid attribute_name' do
+      delete :purge, params: { attribute_name: 'Documents; DROP' }
+
+      expect(response).to have_http_status(:bad_request)
+    end
+
+    context 'when the authorization policy denies destroy' do
+      before do
+        # Pundit n'est pas chargé dans la suite : on simule le refus rendu par authorize_delete!
+        allow(controller).to receive(:authorize_delete!) do
+          controller.send(:render_error, 'denied', :forbidden)
+        end
+      end
+
+      it 'returns 403 and purges nothing' do
+        create_temp_attachment(session: session_id, attribute: 'documents')
+
+        expect {
+          delete :purge, params: { attribute_name: 'documents' }
+        }.not_to change(UploadDND::TemporaryAttachment, :count)
+
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+  end
+
   describe 'POST #create' do
     context 'with valid params' do
       before do

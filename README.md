@@ -61,6 +61,28 @@ rails active_storage:install
 rails db:migrate
 ```
 
+#### URLs des blobs : redirect ou proxy
+
+Les URLs de prévisualisation et de téléchargement suivent le réglage standard
+`config.active_storage.resolve_model_to_route` de votre application :
+
+- `:rails_storage_redirect` (défaut Rails) — redirection vers une URL signée
+  temporaire du service de stockage (S3, etc.)
+- `:rails_storage_proxy` — les fichiers sont servis par votre application,
+  en same-origin
+
+Avec un bucket S3-like externe et une CSP stricte (`frame-src 'self'`,
+`img-src 'self'`), le mode redirect casse les prévisualisations. Passez en
+mode proxy :
+
+```ruby
+# config/application.rb ou config/environments/production.rb
+config.active_storage.resolve_model_to_route = :rails_storage_proxy
+```
+
+Aucune configuration côté gem : elle respecte ce réglage partout (previews,
+API JSON).
+
 ## Configuration
 
 Éditez `config/initializers/upload_d_n_d.rb` :
@@ -88,6 +110,13 @@ UploadDND.configure do |config|
   config.on_upload_success = ->(blob, user) {
     Rails.logger.info "File uploaded: #{blob.filename} by #{user&.email}"
   }
+  config.on_file_removed = ->(record, attribute_name, user) {
+    Rails.logger.info "File removed from #{record.class}##{record.id} by #{user&.id}"
+  }
+
+  # Route de suppression : :engine (défaut, aucune route requise côté app)
+  # ou :host (legacy, route membre remove_file de votre app)
+  # config.delete_route = :engine
 end
 ```
 
@@ -279,6 +308,39 @@ end
 **Sécurité** : `wire_temporary_uploads` vérifie que le `session_id` correspond à la session actuelle.
 Le `temp_upload_session_id` utilise une variable d'instance privée (`@_temp_upload_session_id`).
 
+**Persistance au rechargement** : les fichiers temporaires sont liés à la session. Si
+l'utilisateur recharge la page (F5, restauration de brouillon, reconnexion), le
+composant affiche à nouveau les fichiers déjà déposés — rien à faire côté app.
+
+Si votre formulaire remplace la zone sans repasser par `upload_field` (Turbo Frame,
+formulaire multi-étapes…), vous pouvez récupérer le HTML de la liste vous-même :
+
+```
+GET /upload_d_n_d/temporary_attachments?attribute_name=documents
+```
+
+Réponse : le partial `<div id="udnd_files_list_documents">…</div>`, limité aux fichiers
+de la session courante. `400` sans `attribute_name` valide.
+
+**Annulation du formulaire** : les fichiers déposés restent liés à la session jusqu'à
+purge automatique (`temporary_files_retention`). Pour qu'ils ne réapparaissent pas
+dans le formulaire suivant quand l'utilisateur annule, purgez-les explicitement :
+
+```
+DELETE /upload_d_n_d/temporary_attachments?attribute_name=documents   → 204
+```
+
+Par exemple depuis un bouton « Annuler » :
+
+```js
+fetch("/upload_d_n_d/temporary_attachments?attribute_name=documents", {
+  method: "DELETE",
+  headers: { "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content }
+}).then(() => Turbo.visit(backUrl))
+```
+
+Scopé sur la session courante ; soumis à la policy `destroy?` si Pundit est activé.
+
 ### 3. Utilisation dans différents namespaces
 
 UploadDND fonctionne de manière transparente dans **tous les namespaces** de votre application :
@@ -357,6 +419,67 @@ end
 - Le concern `Uploadable` peut être inclus dans n'importe quel modèle
 - Les autorisations sont gérées au niveau du modèle (Pundit/CanCanCan)
 
+#### Suppression de fichiers : par le moteur (défaut) ou par vos routes
+
+Depuis la v0.7, la suppression d'un fichier passe par défaut par le moteur
+de la gem (`DELETE /upload_d_n_d/attachments/:id` + `record_gid`), comme
+l'upload : **aucune route requise côté app**, quel que soit le routing du
+record (imbriqué, singulier, namespacé). L'autorisation utilise la policy
+Pundit du record (`update?`), avec fallback sur
+`UploadDND::AttachmentPolicy#destroy?` si le modèle n'a pas de policy.
+
+Pour brancher de la logique après suppression :
+
+```ruby
+UploadDND.configure do |config|
+  config.on_file_removed = ->(record, attribute_name, user) {
+    Rails.logger.info "File removed from #{record.class}##{record.id} (#{attribute_name}) by #{user&.id}"
+  }
+end
+```
+
+Le flux historique (suppression via la route membre `remove_file` de votre
+app et le concern `Controllers::Uploadable`) reste disponible :
+
+```ruby
+UploadDND.configure do |config|
+  config.delete_route = :host # défaut : :engine
+end
+```
+
+Utilisez-le si vos actions `remove_file` contiennent de la logique custom
+que `on_file_removed` ne couvre pas. Le reste de cette section ne concerne
+que ce mode `:host`.
+
+#### Records imbriqués ou resources singulières (mode `:host` uniquement)
+
+En mode `:host`, la liste de fichiers construit l'URL de suppression via
+`polymorphic_path(record)` : le record doit donc avoir une route
+polymorphique. C'est automatique pour un `resources :xxx` top-level (y
+compris namespacé), mais **pas** pour une resource imbriquée ou singulière.
+Dans ce cas, déclarez la résolution dans `config/routes.rb` avec
+[`resolve`](https://guides.rubyonrails.org/routing.html#using-resolve) — le
+mécanisme Rails prévu pour ça :
+
+```ruby
+# resource :convention (singulière), imbriquée sous resources :projects
+resolve("Convention") { |convention, options| route_for(:project_convention, convention.project, options) }
+
+# resources :documents imbriqué sous resources :projects
+resolve("Document") { |document, options| route_for(:project_document, document.project, document, options) }
+```
+
+> `resolve` se déclare au niveau racine du bloc `routes.draw`.
+
+Sans résolution possible, la gem lève `UploadDND::UnroutableRecordError`
+avec ces instructions (plutôt qu'un `undefined method 'xxx_path'` cryptique).
+
+Pour un routing vraiment exotique, le point d'extension officiel est le
+helper `udnd_remove_file_url(record, attachment, attribute_name)`, à
+redéfinir dans le `ApplicationHelper` de votre app. **Ne shadowez pas le
+partial `_files_list`** pour ça : un partial copié ne suit pas les mises à
+jour de la gem.
+
 ### 4. Autorisation (optionnel)
 
 #### Avec Pundit
@@ -404,28 +527,62 @@ uploadable :avatar,
            strict_mime_check: true
 ```
 
-## Nettoyage automatique
+### Rate limiting
 
-Ajoutez un job pour nettoyer les fichiers temporaires expirés :
+La gem embarque un rate limiting sur ses endpoints d'attachement
+(`POST /upload_d_n_d/attachments` et `/upload_d_n_d/temporary_attachments`),
+désactivé par défaut. Pour l'activer :
 
 ```ruby
-# app/jobs/cleanup_temporary_attachments_job.rb
-class CleanupTemporaryAttachmentsJob < ApplicationJob
-  queue_as :default
-
-  def perform
-    UploadDND::TemporaryAttachment.cleanup_expired!
-  end
+UploadDND.configure do |config|
+  config.rate_limit_enabled = true
+  config.rate_limit_max_requests = 30   # par utilisateur+IP
+  config.rate_limit_period = 60         # secondes
 end
 ```
 
-Planifiez-le avec solid_queue (Rails 8+) :
+Dimensionnez `rate_limit_max_requests` en fonction de vos usages : un upload
+multiple déclenche une requête d'attachement **par fichier**. Une limite trop
+basse fera échouer les derniers fichiers d'un lot légitime (HTTP 429).
+
+Le compteur s'appuie sur `Rails.cache` : en production, utilisez un store
+partagé entre processus (Redis, Memcached, SolidCache) pour que la limite
+soit globale et non par worker.
+
+### ⚠️ Protéger l'endpoint DirectUpload
+
+Les fichiers sont téléversés via ActiveStorage DirectUpload, c'est-à-dire par
+`POST /rails/active_storage/direct_uploads` — une route de **votre
+application**, hors du périmètre de la gem. Le rate limiting ci-dessus ne la
+couvre pas : sans protection, un attaquant peut créer des blobs en masse et
+saturer votre stockage sans jamais toucher les endpoints de la gem.
+
+Protégez-la côté application, par exemple avec [rack-attack](https://github.com/rack/rack-attack) :
 
 ```ruby
+# config/initializers/rack_attack.rb
+Rack::Attack.throttle("direct_uploads/ip", limit: 30, period: 1.minute) do |req|
+  req.ip if req.path == "/rails/active_storage/direct_uploads" && req.post?
+end
+```
+
+Pensez aussi au job de nettoyage des blobs orphelins (blobs créés par
+DirectUpload mais jamais attachés) : `ActiveStorage::Blob.unattached` +
+`purge_later` en tâche planifiée.
+
+## Nettoyage automatique
+
+La gem fournit `UploadDND::CleanupTemporaryAttachmentsJob`, qui purge les
+fichiers temporaires expirés (au-delà de `temporary_files_retention` jours).
+Aucun job à écrire côté app : il suffit de planifier sa récurrence.
+
+Avec solid_queue (Rails 8+) :
+
+```yaml
 # config/recurring.yml
 production:
   cleanup_temporary_uploads:
-    class: CleanupTemporaryAttachmentsJob
+    class: UploadDND::CleanupTemporaryAttachmentsJob
     schedule: every day at 2am
     queue: background
 ```
@@ -439,10 +596,19 @@ SolidQueue.configure do |config|
     {
       key: "cleanup_temporary_uploads",
       schedule: "0 2 * * *", # Tous les jours à 2h du matin (cron syntax)
-      class: "CleanupTemporaryAttachmentsJob"
+      class: "UploadDND::CleanupTemporaryAttachmentsJob"
     }
   ]
 end
+```
+
+Ou avec sidekiq-cron :
+
+```yaml
+# config/schedule.yml
+cleanup_temporary_uploads:
+  cron: "0 2 * * *"
+  class: "UploadDND::CleanupTemporaryAttachmentsJob"
 ```
 
 ## Customisation du style

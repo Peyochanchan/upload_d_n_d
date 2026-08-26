@@ -7,6 +7,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-08-26
+
+Les fichiers déposés dans un formulaire de création survivent au rechargement de page, et l'app peut les purger à l'annulation.
+
+### Fixed
+- **Upload impossible sur une session vierge** — sans cookie de session, `session.id` était nil : le premier upload d'un formulaire de création échouait en 422 (`session_id` vide), et l'id lu au rendu du composant ne correspondait pas à celui des uploads. `UploadDND::SessionId.for(session)` amorce désormais la session avant de lire l'id ; utilisé partout dans la gem et dans les templates du générateur (`upload_session_field`, concern, authorization)
+- **Composant : zone vide après rechargement** — sans record persisté, le composant rend maintenant les fichiers temporaires de la session courante (`UploadComponent#files` existait mais n'était jamais appelé par le template). F5, restauration de brouillon ou reconnexion n'affichent plus une zone vide alors que les fichiers sont côté serveur
+
+### Added
+- **`GET /upload_d_n_d/temporary_attachments?attribute_name=x`** : HTML de la liste des fichiers temporaires de la session, pour les apps qui remplacent la zone hors composant
+- **`DELETE /upload_d_n_d/temporary_attachments?attribute_name=x`** : purge des fichiers temporaires de la session pour cet attribut (bouton « Annuler »), 204. Soumis à la policy `destroy?` si Pundit est activé
+
+### Notes
+- Les fichiers d'un formulaire abandonné sans purge réapparaissent dans tout formulaire suivant de la session utilisant le même `attribute_name`, jusqu'à `temporary_files_retention`. Auparavant ils étaient invisibles mais attachés quand même au submit
+
+## [0.7.0] - 2026-07-17
+
+La suppression de fichiers passe par le moteur de la gem, comme l'upload : **plus aucune route requise côté app**, quel que soit le routing du record (imbriqué, singulier, namespacé). Les `resolve()` déclarés pour la gem deviennent inutiles (ils restent utiles au routing polymorphique du reste de votre app).
+
+### Changed
+- **⚠️ `config.delete_route` par défaut `:engine`** : l'UI de suppression appelle `DELETE /upload_d_n_d/attachments/:id` (moteur) au lieu de la route membre `remove_file` de l'app. Les actions `remove_file` custom ne sont plus appelées par l'UI — branchez `config.on_file_removed` ou repassez en `config.delete_route = :host` (flux legacy inchangé)
+- `UploadDND::UnroutableRecordError` et le pattern `resolve()` ne concernent plus que le mode `:host`
+
+### Added
+- **`AttachmentsController#destroy`** : suppression par `record_gid`, autorisation fail-closed via la policy Pundit du record (`update?`) avec fallback sur la policy générique de la gem, vérification d'appartenance attachment ↔ record ↔ attribut
+- **`config.on_file_removed`** : callback `->(record, attribute_name, user)` après suppression
+- **`config.delete_route`** : `:engine` (défaut) / `:host` (legacy)
+
+## [0.6.2] - 2026-07-17
+
+Support des records en resources imbriquées ou singulières (ex. `resource :convention` sous `resources :projects`).
+
+### Added
+- **`UploadDND::UnroutableRecordError`** : quand un record affiché dans la liste de fichiers n'a pas de route polymorphique, la gem lève une erreur explicite contenant le remède (déclarer `resolve()` dans `config/routes.rb`, exemple inclus) au lieu d'un `undefined method 'xxx_path'` cryptique
+- **Helper `udnd_remove_file_url(record, attachment, attribute_name)`** : point d'extension officiel pour l'URL de suppression, surchargeable dans le `ApplicationHelper` de l'app — ne shadowez plus le partial `_files_list` pour ça
+- Section README « Records imbriqués ou resources singulières » (pattern `resolve`)
+
+### Fixed
+- **`authorize_record_for_update` : fallback sur la policy top-level** quand la policy namespacée n'existe pas. Le concern cherchait la policy dans le namespace du controller (`Projects::ConventionsController` → `Projects::ConventionPolicy`) alors qu'un `module:` de routes n'implique pas un namespace de policies — `Pundit::NotDefinedError` déclenche désormais une seconde tentative sur la policy top-level (`ConventionPolicy`). Les autres erreurs d'autorisation ne sont pas avalées.
+
+## [0.6.1] - 2026-07-09
+
+### Security
+- **Fail-open d'autorisation dans `Controllers::Uploadable`** : `authorize_record_for_update` testait `respond_to?(:authorize)` sans `include_all: true` — `Pundit::Authorization#authorize` étant privée, le check échouait et `attach_file`/`remove_file` s'exécutaient sans aucune vérification d'autorisation (puis 500 `verify_authorized` après exécution). Mise à jour fortement recommandée depuis 0.6.0 et antérieures.
+
+## [0.6.0] - 2026-07-09
+
+Version issue d'un audit sécurité/qualité de la gem.
+
+### Security
+- **Modale de prévisualisation réécrite en DOM APIs** : corrige un XSS possible via un nom de fichier forgé interpolé dans `innerHTML` (breakout d'attribut)
+- **Rate limiting** : compteur atomique via `Rails.cache.increment` (le read + write laissait passer des requêtes concurrentes sous la limite)
+- **README** : nouvelle documentation sécurité — protection de l'endpoint DirectUpload (`/rails/active_storage/direct_uploads`, hors périmètre du rate limiting de la gem) et dimensionnement du rate limiting
+
+### Fixed
+- **Boutons des modales alert/confirm inertes** : les `data-action` posés sur du DOM appendu à `document.body` n'étaient jamais bindés par Stimulus (hors scope du controller) — remplacés par des event listeners directs ; le clic sur l'overlay pour fermer fonctionne désormais
+- Preview PDF via `<object>` avec fallback téléchargement natif (iframe vide sur Safari mobile auparavant)
+- Suppression des styles inline injectés en JS (compatibilité CSP `style-src` stricte)
+- `delete_url` des listes de fichiers construit via `polymorphic_path` (respecte namespaces, scopes de locale, `relative_url_root` ; échappe les query params)
+- Validation d'extension côté client en comparaison exacte (`.jpe` passait si `.jpeg` était accepté)
+
+### Added
+- **URLs de blobs via `resolve_model_to_route`** : la gem suit le réglage `config.active_storage.resolve_model_to_route` de l'app hôte — passez-le à `:rails_storage_proxy` pour servir les blobs en same-origin (CSP stricte, bucket S3-like externe), sans configuration côté gem
+- **`UploadDND::CleanupTemporaryAttachmentsJob`** : job de purge des fichiers temporaires expirés embarqué dans la gem (plus besoin de l'écrire côté app, il ne reste que la planification)
+- Accessibilité de la modale de prévisualisation : `role="dialog"`, `aria-modal`, `aria-labelledby`, focus trap, retour du focus au déclencheur
+- i18n des libellés de la modale de prévisualisation (fr + en)
+- Fermeture des modales sur `turbo:before-visit` (plus de modale orpheline après navigation)
+
+### Changed
+- Icônes de fichiers centralisées dans le partial `upload_d_n_d/shared/_file_icon` — surchargeable par l'app hôte en le shadowant
+
 ## [0.5.0] - 2026-03-26
 
 Refonte majeure de l'architecture : tous les assets (JS, CSS, ViewComponent) sont désormais servis directement depuis la gem. Plus besoin de copier des fichiers dans l'app hôte. Un simple `bundle update` suffit pour tout mettre à jour.

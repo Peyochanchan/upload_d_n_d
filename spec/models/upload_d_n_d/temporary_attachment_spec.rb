@@ -123,6 +123,15 @@ RSpec.describe UploadDND::TemporaryAttachment, type: :model do
         expect(temp_attachment.url).to be_present
         expect(temp_attachment.url).to include('/rails/active_storage/blobs')
       end
+
+      it 'follows the host app resolve_model_to_route setting' do
+        original = ActiveStorage.resolve_model_to_route
+        ActiveStorage.resolve_model_to_route = :rails_storage_proxy
+
+        expect(temp_attachment.url).to include('/rails/active_storage/blobs/proxy/')
+      ensure
+        ActiveStorage.resolve_model_to_route = original
+      end
     end
   end
 
