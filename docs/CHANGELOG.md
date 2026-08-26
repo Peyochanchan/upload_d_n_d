@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-08-26
+
+Les fichiers déposés dans un formulaire de création survivent au rechargement de page, et l'app peut les purger à l'annulation.
+
+### Fixed
+- **Upload impossible sur une session vierge** — sans cookie de session, `session.id` était nil : le premier upload d'un formulaire de création échouait en 422 (`session_id` vide), et l'id lu au rendu du composant ne correspondait pas à celui des uploads. `UploadDND::SessionId.for(session)` amorce désormais la session avant de lire l'id ; utilisé partout dans la gem et dans les templates du générateur (`upload_session_field`, concern, authorization)
+- **Composant : zone vide après rechargement** — sans record persisté, le composant rend maintenant les fichiers temporaires de la session courante (`UploadComponent#files` existait mais n'était jamais appelé par le template). F5, restauration de brouillon ou reconnexion n'affichent plus une zone vide alors que les fichiers sont côté serveur
+
+### Added
+- **`GET /upload_d_n_d/temporary_attachments?attribute_name=x`** : HTML de la liste des fichiers temporaires de la session, pour les apps qui remplacent la zone hors composant
+- **`DELETE /upload_d_n_d/temporary_attachments?attribute_name=x`** : purge des fichiers temporaires de la session pour cet attribut (bouton « Annuler »), 204. Soumis à la policy `destroy?` si Pundit est activé
+
+### Notes
+- Les fichiers d'un formulaire abandonné sans purge réapparaissent dans tout formulaire suivant de la session utilisant le même `attribute_name`, jusqu'à `temporary_files_retention`. Auparavant ils étaient invisibles mais attachés quand même au submit
+
 ## [0.7.0] - 2026-07-17
 
 La suppression de fichiers passe par le moteur de la gem, comme l'upload : **plus aucune route requise côté app**, quel que soit le routing du record (imbriqué, singulier, namespacé). Les `resolve()` déclarés pour la gem deviennent inutiles (ils restent utiles au routing polymorphique du reste de votre app).
