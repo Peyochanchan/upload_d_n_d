@@ -52,12 +52,14 @@ module UploadDND
           source_attr = temp_attachment.attribute_name
           target_attr = attribute_map[source_attr]&.to_s || source_attr
 
-          unless record.respond_to?(target_attr)
+          # SÉCURITÉ : attribute_name vient du client — seul un attachment
+          # déclaré sur le modèle est résolu, jamais une méthode quelconque.
+          attachment = UploadDND::AttachmentLookup.find(record, target_attr)
+          unless attachment
             temp_attachment.destroy
             next
           end
 
-          attachment = record.send(target_attr)
           blob_attachment = temp_attachment.blob_attachment
           unless blob_attachment
             temp_attachment.destroy

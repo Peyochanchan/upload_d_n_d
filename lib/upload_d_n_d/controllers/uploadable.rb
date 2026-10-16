@@ -102,7 +102,22 @@ module UploadDND
       blob = ActiveStorage::Blob.find_signed(params[:signed_blob_id])
       attribute_name = params[:attribute_name]
 
-      record.send(attribute_name).attach(blob)
+      # SÉCURITÉ : attribute_name vient du client — seul un attachment déclaré
+      # sur le modèle est résolu, jamais une méthode quelconque (destroy...).
+      attachment = UploadDND::AttachmentLookup.find(record, attribute_name)
+      unless attachment
+        message = I18n.t("upload_d_n_d.errors.invalid_attribute", attribute: attribute_name)
+        respond_to do |format|
+          format.turbo_stream do
+            flash.now[:alert] = message
+            render turbo_stream: turbo_stream.replace("flash_messages", partial: "shared/flashes"), status: :unprocessable_entity
+          end
+          format.json { render json: { error: message }, status: :unprocessable_entity }
+        end
+        return
+      end
+
+      attachment.attach(blob)
 
       if record.save
         respond_to do |format|

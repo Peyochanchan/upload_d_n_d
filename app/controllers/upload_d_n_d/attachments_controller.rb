@@ -53,18 +53,20 @@ module UploadDND
         return
       end
 
-      # Vérification que l'attribut existe
-      unless record.respond_to?(attribute_name)
+      authorize_record_upload!(record)
+      return if performed?
+
+      # SÉCURITÉ : l'attribut doit être un attachment déclaré sur le modèle.
+      # Détection SERVEUR du type d'attachment (has_one vs has_many) :
+      # NE JAMAIS faire confiance au paramètre client params[:multiple]
+      attachment = UploadDND::AttachmentLookup.find(record, attribute_name)
+      unless attachment
         render_error(I18n.t("upload_d_n_d.errors.invalid_attribute", attribute: attribute_name), :unprocessable_entity)
         return
       end
 
       # Sanitize filename avant l'attachement
       @blob.update(filename: sanitize_filename(@blob.filename.to_s))
-
-      # Détection SERVEUR du type d'attachment (has_one vs has_many)
-      # NE JAMAIS faire confiance au paramètre client params[:multiple]
-      attachment = record.send(attribute_name)
 
       if attachment.is_a?(ActiveStorage::Attached::Many)
         # has_many_attached: ajouter à la collection
@@ -151,6 +153,21 @@ module UploadDND
       rescue Pundit::NotDefinedError
         authorize :upload_d_n_d_attachment, :destroy?
       end
+    rescue Pundit::NotAuthorizedError
+      render_error(I18n.t("upload_d_n_d.errors.unauthorized"), :forbidden)
+    end
+
+    # Autorisation de l'upload sur le record lui-même (policy update?), en plus
+    # de la policy générique vérifiée en before_action : le record_gid vient du
+    # client, sans ce contrôle tout utilisateur autorisé à uploader pouvait
+    # attacher un fichier à n'importe quel record. Si le modèle n'a pas de
+    # policy, la policy générique (create?) déjà vérifiée fait foi.
+    def authorize_record_upload!(record)
+      return unless pundit_enabled?
+
+      authorize record, :update?
+    rescue Pundit::NotDefinedError
+      nil
     rescue Pundit::NotAuthorizedError
       render_error(I18n.t("upload_d_n_d.errors.unauthorized"), :forbidden)
     end

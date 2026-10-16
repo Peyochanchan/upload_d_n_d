@@ -121,6 +121,20 @@ RSpec.describe UploadableTestController, type: :controller do
         expect(user.avatar).not_to be_attached
       end
     end
+
+    # SÉCURITÉ : attribute_name du temporaire vient du client.
+    context 'when attribute_name is not an attachment' do
+      it 'never calls the method on the record and drops the temporary file' do
+        blob = ActiveStorage::Blob.create_and_upload!(io: StringIO.new("data"), filename: 'file.pdf')
+        temp = UploadDND::TemporaryAttachment.create!(session_id: session_id, attribute_name: 'destroy')
+        temp.blob.attach(blob)
+
+        post :test_attach_files, params: { id: user.id, attribute_name: 'destroy' }
+
+        expect(User.exists?(user.id)).to be true
+        expect(UploadDND::TemporaryAttachment.exists?(temp.id)).to be false
+      end
+    end
   end
 
   describe '#controller_namespace' do
@@ -241,6 +255,22 @@ RSpec.describe UploadableTestController, type: :controller do
 
         expect(response).to have_http_status(:unprocessable_entity)
         expect(JSON.parse(response.body)['error']).to include('Email is invalid')
+      end
+
+      # SÉCURITÉ : attribute_name ne doit jamais servir à appeler une méthode
+      # quelconque sur le record.
+      %w[destroy delete email].each do |method_name|
+        it "refuses #{method_name} (not an attachment) without calling it" do
+          expect(user).not_to receive(method_name)
+
+          post :attach_file, params: {
+            signed_blob_id: blob.signed_id,
+            attribute_name: method_name
+          }, format: :json
+
+          expect(response).to have_http_status(:unprocessable_entity)
+          expect(User.exists?(user.id)).to be true
+        end
       end
     end
 

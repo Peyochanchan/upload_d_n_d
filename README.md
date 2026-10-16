@@ -428,6 +428,10 @@ record (imbriqué, singulier, namespacé). L'autorisation utilise la policy
 Pundit du record (`update?`), avec fallback sur
 `UploadDND::AttachmentPolicy#destroy?` si le modèle n'a pas de policy.
 
+L'upload sur un record existant (`POST /upload_d_n_d/attachments`) vérifie
+la policy générique (`UploadDNDAttachmentPolicy#create?`) **puis** la policy
+du record (`update?`) si le modèle en a une — depuis la v0.7.2.
+
 Pour brancher de la logique après suppression :
 
 ```ruby
