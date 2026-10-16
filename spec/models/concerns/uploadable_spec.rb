@@ -132,6 +132,21 @@ RSpec.describe UploadDND::Uploadable do
 
       expect(UploadDND::TemporaryAttachment.where(session_id: session_id).count).to eq(0)
     end
+
+    # SÉCURITÉ : attribute_name du temporaire vient du client.
+    it "n'appelle jamais une méthode du record désignée par attribute_name (destroy)" do
+      session_id = SecureRandom.uuid
+      blob = create_blob(filename: "doc.pdf", content_type: "application/pdf")
+
+      create_temp_attachment(session_id: session_id, attribute_name: "destroy", blob: blob)
+
+      record = UploadableUser.new(name: "Test", email: "test@example.com")
+      record.temp_upload_session_id = session_id
+      record.save!
+
+      expect(UploadableUser.exists?(record.id)).to be true
+      expect(UploadDND::TemporaryAttachment.where(session_id: session_id).count).to eq(0)
+    end
   end
 
   describe "FileValidator integration" do

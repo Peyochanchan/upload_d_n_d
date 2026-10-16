@@ -72,15 +72,17 @@ module UploadDND
 
       UploadDND::TemporaryAttachment.where(session_id: temp_upload_session_id).find_each do |temp_attachment|
         attribute_name = temp_attachment.attribute_name
-        unless respond_to?(attribute_name)
-          # Si l'attribut n'existe pas sur le record, on nettoie quand même pour
-          # éviter de laisser des fichiers orphelins en base.
+
+        # SÉCURITÉ : attribute_name vient du client — seul un attachment déclaré
+        # sur le modèle est résolu. Détection serveur du type (has_one vs has_many).
+        attachment = UploadDND::AttachmentLookup.find(self, attribute_name)
+        unless attachment
+          # Si l'attribut n'est pas un attachment du record, on nettoie quand même
+          # pour éviter de laisser des fichiers orphelins en base.
           temp_attachment.destroy
           next
         end
 
-        # SÉCURITÉ : Détection serveur du type d'attachment (has_one vs has_many)
-        attachment = send(attribute_name)
         blob_attachment = temp_attachment.blob_attachment
         unless blob_attachment
           temp_attachment.destroy

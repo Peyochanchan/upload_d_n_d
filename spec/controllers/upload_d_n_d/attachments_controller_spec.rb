@@ -166,6 +166,33 @@ RSpec.describe UploadDND::AttachmentsController, type: :controller do
         expect(response).to have_http_status(:unprocessable_content)
         expect(JSON.parse(response.body)['error']).to eq(I18n.t('upload_d_n_d.errors.invalid_attribute', attribute: 'nonexistent_attribute'))
       end
+
+      # SÉCURITÉ : attribute_name ne doit jamais servir à appeler une méthode
+      # quelconque sur le record (respond_to? + send laissait passer destroy).
+      %w[destroy delete touch reload email].each do |method_name|
+        it "refuses #{method_name} (not an attachment) without calling it" do
+          expect_any_instance_of(User).not_to receive(method_name)
+
+          post :create, params: {
+            signed_blob_id: blob.signed_id,
+            attribute_name: method_name,
+            record_gid: user.to_global_id.to_s
+          }, format: :json
+
+          expect(response).to have_http_status(:unprocessable_content)
+          expect(User.exists?(user.id)).to be true
+        end
+      end
+
+      it 'does not render the files list of the record when the attribute is refused' do
+        post :create, params: {
+          signed_blob_id: blob.signed_id,
+          attribute_name: 'destroy',
+          record_gid: user.to_global_id.to_s
+        }, format: :turbo_stream
+
+        expect(response.body).not_to include('udnd_files_list')
+      end
     end
 
     context 'with JSON format' do
