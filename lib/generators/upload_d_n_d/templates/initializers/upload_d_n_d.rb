@@ -24,6 +24,11 @@ UploadDND.configure do |config|
   # Les fichiers temporaires non attachés seront supprimés après ce délai
   # config.temporary_files_retention = 7
 
+  # Un fichier refusé par le serveur (taille, type, validation...) est purgé
+  # s'il a été envoyé dans cette fenêtre et n'est rattaché à rien.
+  # nil désactive la purge des fichiers refusés.
+  # config.rejected_blob_purge_window = 1.hour
+
   # Classe utilisée pour l'autorisation (Pundit, CanCanCan, ou nil)
   # Détection automatique par défaut
   # config.authorization_adapter = :pundit # ou :cancancan, ou nil

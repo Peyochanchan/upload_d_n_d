@@ -39,7 +39,51 @@ module UploadDND
     before_action :validate_signed_blob_id_format, only: [ :create ]
     before_action :find_blob, only: [ :create ]
 
+    # Déclaré après find_blob (@blob connu) et avant les before_action des
+    # sous-classes (autorisation, contraintes), qu'il englobe.
+    around_action :discard_blob_on_rejection, only: [ :create ]
+
     protected
+
+    # === Purge des blobs refusés ===
+
+    # Avec DirectUpload, le blob est déjà dans le bucket : s'il est refusé
+    # (réponse en erreur ou exception, relancée), on le purge — sous les
+    # garde-fous de UploadDND::RejectedBlob.
+    def discard_blob_on_rejection
+      yield
+    rescue StandardError
+      discard_rejected_blob
+      raise
+    else
+      discard_rejected_blob if response.status >= 400
+    end
+
+    # Ne purge que si l'autorisation a été posée comme réussie
+    # (grant_upload_authorization!) : une requête refusée faute de droits, ou
+    # dont l'autorisation n'a pas abouti (exception, adaptateur inconnu), ne
+    # modifie rien. Un échec de la purge ne masque pas l'erreur d'origine : il
+    # est journalisé, le blob restera au nettoyage.
+    def discard_rejected_blob
+      return unless upload_authorized?
+
+      UploadDND::RejectedBlob.discard(@blob)
+    rescue StandardError => e
+      Rails.logger.error "UploadDND: rejected blob purge failed - #{e.class}: #{e.message}"
+    end
+
+    # À appeler par chaque contrôle d'autorisation, une fois réussi.
+    def grant_upload_authorization!
+      @upload_authorized = true
+    end
+
+    def revoke_upload_authorization!
+      @upload_authorized = false
+    end
+
+    def upload_authorized?
+      @upload_authorized == true
+    end
 
     # === Callbacks de validation ===
 

@@ -257,6 +257,67 @@ RSpec.describe UploadableTestController, type: :controller do
         expect(JSON.parse(response.body)['error']).to include('Email is invalid')
       end
 
+      context 'purge of rejected blobs' do
+        include ActiveJob::TestHelper
+
+        def blob_exists?
+          ActiveStorage::Blob.exists?(blob.id)
+        end
+
+        it 'purges the blob when the save fails (422)' do
+          allow_any_instance_of(User).to receive(:save).and_return(false)
+          allow_any_instance_of(User).to receive(:errors).and_return(double(full_messages: [ 'Email is invalid' ]))
+
+          perform_enqueued_jobs do
+            post :attach_file, params: { signed_blob_id: blob.signed_id, attribute_name: 'avatar' }, format: :json
+          end
+
+          expect(response).to have_http_status(:unprocessable_entity)
+          expect(blob_exists?).to be false
+        end
+
+        it 'purges the blob when the attribute is not an attachment (422)' do
+          perform_enqueued_jobs do
+            post :attach_file, params: { signed_blob_id: blob.signed_id, attribute_name: 'email' }, format: :json
+          end
+
+          expect(response).to have_http_status(:unprocessable_entity)
+          expect(blob_exists?).to be false
+        end
+
+        it 'purges the blob and re-raises on an unexpected exception' do
+          allow_any_instance_of(User).to receive(:save).and_raise(StandardError, 'boom')
+
+          perform_enqueued_jobs do
+            expect {
+              post :attach_file, params: { signed_blob_id: blob.signed_id, attribute_name: 'avatar' }, format: :json
+            }.to raise_error(StandardError, 'boom')
+          end
+          expect(blob_exists?).to be false
+        end
+
+        it 'modifies nothing when authorization is refused' do
+          not_authorized = Class.new(StandardError)
+          controller.singleton_class.define_method(:authorize) { |*| raise not_authorized }
+
+          perform_enqueued_jobs do
+            expect {
+              post :attach_file, params: { signed_blob_id: blob.signed_id, attribute_name: 'avatar' }, format: :json
+            }.to raise_error(not_authorized)
+          end
+          expect(blob_exists?).to be true
+        end
+
+        it 'keeps the blob on success' do
+          perform_enqueued_jobs do
+            post :attach_file, params: { signed_blob_id: blob.signed_id, attribute_name: 'avatar' }, format: :json
+          end
+
+          expect(response).to have_http_status(:ok)
+          expect(user.reload.avatar).to be_attached
+        end
+      end
+
       # SÉCURITÉ : attribute_name ne doit jamais servir à appeler une méthode
       # quelconque sur le record.
       %w[destroy delete email].each do |method_name|

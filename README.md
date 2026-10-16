@@ -570,6 +570,18 @@ Rack::Attack.throttle("direct_uploads/ip", limit: 30, period: 1.minute) do |req|
 end
 ```
 
+#### Fichiers refusés
+
+Avec DirectUpload, le fichier est déjà dans votre stockage quand la gem le
+contrôle. Quand elle le refuse (taille, type, validation du modèle, erreur à
+l'enregistrement), elle le purge en arrière-plan
+(`UploadDND::PurgeRejectedBlobJob`, file `active_storage.queues.purge`), avec
+ces garde-fous :
+
+- un fichier rattaché à un record ou à un fichier temporaire n'est jamais supprimé, ni au refus ni à l'exécution du job ;
+- seul un fichier envoyé récemment est purgé (`config.rejected_blob_purge_window`, 1 heure par défaut ; `nil` désactive la purge) ;
+- rien n'est supprimé si l'autorisation n'a pas été explicitement accordée (refus 401 ou 403, ou autorisation qui n'aboutit pas).
+
 Pensez aussi au job de nettoyage des blobs orphelins (blobs créés par
 DirectUpload mais jamais attachés) : `ActiveStorage::Blob.unattached` +
 `purge_later` en tâche planifiée.

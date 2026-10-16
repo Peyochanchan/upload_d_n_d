@@ -98,6 +98,8 @@ module UploadDND
       end
 
       authorize_record_for_update(record)
+      # Posé seulement si l'autorisation a réussi : sans lui, rien n'est purgé.
+      authorized = true
 
       blob = ActiveStorage::Blob.find_signed(params[:signed_blob_id])
       attribute_name = params[:attribute_name]
@@ -106,6 +108,7 @@ module UploadDND
       # sur le modèle est résolu, jamais une méthode quelconque (destroy...).
       attachment = UploadDND::AttachmentLookup.find(record, attribute_name)
       unless attachment
+        discard_rejected_upload_blob(blob, authorized)
         message = I18n.t("upload_d_n_d.errors.invalid_attribute", attribute: attribute_name)
         respond_to do |format|
           format.turbo_stream do
@@ -135,6 +138,7 @@ module UploadDND
           format.json { render json: { status: "ok" }, status: :ok }
         end
       else
+        discard_rejected_upload_blob(blob, authorized)
         respond_to do |format|
           format.turbo_stream do
             flash.now[:alert] = I18n.t("upload_d_n_d.errors.save_failed", errors: record.errors.full_messages.join(", "))
@@ -143,6 +147,11 @@ module UploadDND
           format.json { render json: { error: record.errors.full_messages }, status: :unprocessable_entity }
         end
       end
+    rescue StandardError
+      # Refus de droits ou autorisation non aboutie : authorized est nil,
+      # rien n'est purgé. L'exception est toujours relancée.
+      discard_rejected_upload_blob(blob, authorized)
+      raise
     end
 
     # Action pour supprimer un fichier d'un record existant (appelée via route de l'app)
@@ -198,6 +207,17 @@ module UploadDND
     end
 
     private
+
+    # Blob envoyé par DirectUpload puis refusé : purgé sous les garde-fous de
+    # UploadDND::RejectedBlob, et seulement si l'autorisation a réussi. Un échec
+    # de la purge ne masque pas l'erreur d'origine.
+    def discard_rejected_upload_blob(blob, authorized)
+      return unless authorized
+
+      UploadDND::RejectedBlob.discard(blob)
+    rescue StandardError => e
+      Rails.logger.error "UploadDND: rejected blob purge failed - #{e.class}: #{e.message}"
+    end
 
     # Retourne le namespace du controller si présent
     # Ex: Admin::ProjectsController => "Admin"

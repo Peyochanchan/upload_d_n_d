@@ -236,9 +236,8 @@ module UploadDND
     # === Autorisation ===
 
     def authorize_upload!
-      return unless pundit_enabled?
-
-      authorize :upload_d_n_d_temporary_attachment, :create?
+      authorize :upload_d_n_d_temporary_attachment, :create? if pundit_enabled?
+      grant_upload_authorization!
     rescue Pundit::NotAuthorizedError
       render_error(I18n.t("upload_d_n_d.errors.unauthorized"), :forbidden)
     end
