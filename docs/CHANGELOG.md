@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Blobs orphelins à chaque refus** : avec DirectUpload, le fichier est déjà dans le bucket quand la gem le contrôle. Un refus (taille, type, MIME strict, validation du modèle, erreur à l'enregistrement du fichier temporaire ou de l'attachement) laissait le blob en place, et chaque nouvel essai en ajoutait un. Le blob refusé est désormais purgé en arrière-plan (`UploadDND::PurgeRejectedBlobJob`), sur `POST /upload_d_n_d/temporary_attachments`, `POST /upload_d_n_d/attachments` et `Controllers::Uploadable#attach_file`
+
+### Added
+- **`config.rejected_blob_purge_window`** (1 heure par défaut) : seul un blob créé dans cette fenêtre est purgé au refus. `nil` désactive la purge
+
+### Notes
+- Garde-fous : un blob rattaché à un record ou à un fichier temporaire n'est jamais supprimé, ni au refus ni à l'exécution du job (revérifié). Un blob plus ancien que la fenêtre est conservé (il peut être cité dans un HTML stocké). Rien n'est supprimé si l'autorisation n'a pas été explicitement accordée : refus (401, 403) ou autorisation qui n'aboutit pas (exception, policy absente)
+- Le job utilise la file `active_storage.queues.purge`, comme `ActiveStorage::PurgeJob` : rien à configurer si la purge Active Storage fonctionne déjà
+- Les blobs orphelins déjà présents ne sont pas concernés : leur nettoyage est prévu séparément
+
 ## [0.7.2] - 2026-10-16
 
 Correctif de sécurité. **Mise à jour fortement recommandée depuis toutes les versions antérieures.**

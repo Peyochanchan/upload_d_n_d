@@ -165,9 +165,13 @@ module UploadDND
     def authorize_record_upload!(record)
       return unless pundit_enabled?
 
-      authorize record, :update?
-    rescue Pundit::NotDefinedError
-      nil
+      revoke_upload_authorization!
+      begin
+        authorize record, :update?
+      rescue Pundit::NotDefinedError
+        nil # policy générique déjà vérifiée
+      end
+      grant_upload_authorization!
     rescue Pundit::NotAuthorizedError
       render_error(I18n.t("upload_d_n_d.errors.unauthorized"), :forbidden)
     end
@@ -197,12 +201,11 @@ module UploadDND
 
     # === Autorisation ===
 
+    # Policy générique ; la policy du record est vérifiée ensuite
+    # (authorize_record_upload!), une fois le record localisé.
     def authorize_upload!
-      return unless pundit_enabled?
-
-      # Note: Pour les attachments permanents, on pourrait autoriser sur le record lui-même
-      # mais pour simplifier on garde la même policy que les temporaires
-      authorize :upload_d_n_d_attachment, :create?
+      authorize :upload_d_n_d_attachment, :create? if pundit_enabled?
+      grant_upload_authorization!
     rescue Pundit::NotAuthorizedError
       render_error(I18n.t("upload_d_n_d.errors.unauthorized"), :forbidden)
     end

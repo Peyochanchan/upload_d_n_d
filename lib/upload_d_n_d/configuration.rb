@@ -9,6 +9,7 @@ module UploadDND
                   :allow_anonymous_uploads,
                   :require_authentication,
                   :temporary_files_retention,
+                  :rejected_blob_purge_window,
                   :authorization_adapter,
                   :validator_class,
                   :active_storage_service,
@@ -29,6 +30,10 @@ module UploadDND
       @allow_anonymous_uploads = false
       @require_authentication = true # Par défaut, authentification requise
       @temporary_files_retention = 7 # jours
+      # Un blob refusé n'est purgé que s'il a été créé dans cette fenêtre
+      # (envoi en cours) : un blob plus ancien peut être cité dans un HTML
+      # stocké. nil désactive la purge des blobs refusés.
+      @rejected_blob_purge_window = 1.hour
       @authorization_adapter = detect_authorization_adapter
       @validator_class = "FileValidator"
       @active_storage_service = nil # Utilise le service par défaut de Rails
