@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-10-16
+
+Correctif de sécurité. **Mise à jour fortement recommandée depuis toutes les versions antérieures.**
+
+### Security
+- **Appel de méthode arbitraire via `attribute_name`** : le nom d'attribut venu du client était résolu par `respond_to?` + `send`. Un nom comme `destroy`, `delete` ou `touch` passait le contrôle de format et était appelé sur le record : via `POST /upload_d_n_d/attachments`, tout utilisateur autorisé à uploader pouvait supprimer le record désigné par `record_gid`, quel que soit son modèle. Seuls les attachments déclarés (`has_one_attached` / `has_many_attached`) sont désormais résolus (`UploadDND::AttachmentLookup`), dans `AttachmentsController#create`, `Controllers::Uploadable#attach_file` et le transfert des fichiers temporaires (`Uploadable#attach_temporary_uploads`, `TemporaryAttachment.attach_to_record`)
+- **Upload sur un record sans autorisation sur ce record** : `POST /upload_d_n_d/attachments` ne vérifiait que la policy générique `UploadDNDAttachmentPolicy#create?`. Tout utilisateur autorisé à uploader pouvait attacher un fichier à n'importe quel record et recevoir la liste de ses fichiers. La policy du record (`update?`) est maintenant vérifiée après la policy générique, comme pour la suppression
+
+### Notes
+- Avec Pundit : un utilisateur dont la policy du record refuse `update?` reçoit désormais 403 à l'upload sur ce record. Les modèles sans policy gardent le comportement précédent (policy générique seule)
+- Un `attribute_name` qui n'est pas un attachment du modèle renvoie 422 (comme un attribut inexistant auparavant). Un fichier temporaire portant un tel nom est supprimé au transfert, sans effet sur le record
+
 ## [0.7.1] - 2026-08-26
 
 Les fichiers déposés dans un formulaire de création survivent au rechargement de page, et l'app peut les purger à l'annulation.
