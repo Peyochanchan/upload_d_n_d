@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.3] - 2026-10-16
+
+Correctif de sécurité (un fichier déjà rattaché ne peut plus être rattaché ailleurs) et purge des fichiers refusés après l'envoi direct. **Mise à jour recommandée.**
+
 ### Security
 - **Un fichier déjà rattaché pouvait être rattaché une seconde fois** : `POST /upload_d_n_d/temporary_attachments`, `POST /upload_d_n_d/attachments` et `Controllers::Uploadable#attach_file` acceptaient le `signed_id` d'un blob déjà rattaché à un autre record (ou gardé par un fichier temporaire). Ce `signed_id` figure dans chaque URL de fichier (`/rails/active_storage/blobs/...`) : un utilisateur qui l'obtenait pouvait rattacher le fichier d'un autre à ses propres records, et le fichier restait accessible même après sa suppression par son propriétaire. Un tel blob est désormais refusé (422, `upload_d_n_d.errors.blob_already_attached`), après l'autorisation et avant toute écriture
 
