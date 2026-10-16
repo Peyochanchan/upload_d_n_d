@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.3] - 2026-10-16
+
+Correctif de sécurité (un fichier déjà rattaché ne peut plus être rattaché ailleurs) et purge des fichiers refusés après l'envoi direct. **Mise à jour recommandée.**
+
+### Security
+- **Un fichier déjà rattaché pouvait être rattaché une seconde fois** : `POST /upload_d_n_d/temporary_attachments`, `POST /upload_d_n_d/attachments` et `Controllers::Uploadable#attach_file` acceptaient le `signed_id` d'un blob déjà rattaché à un autre record (ou gardé par un fichier temporaire). Ce `signed_id` figure dans chaque URL de fichier (`/rails/active_storage/blobs/...`) : un utilisateur qui l'obtenait pouvait rattacher le fichier d'un autre à ses propres records, et le fichier restait accessible même après sa suppression par son propriétaire. Un tel blob est désormais refusé (422, `upload_d_n_d.errors.blob_already_attached`), après l'autorisation et avant toute écriture
+
 ### Fixed
 - **Blobs orphelins à chaque refus** : avec DirectUpload, le fichier est déjà dans le bucket quand la gem le contrôle. Un refus (taille, type, MIME strict, validation du modèle, erreur à l'enregistrement du fichier temporaire ou de l'attachement) laissait le blob en place, et chaque nouvel essai en ajoutait un. Le blob refusé est désormais purgé en arrière-plan (`UploadDND::PurgeRejectedBlobJob`), sur `POST /upload_d_n_d/temporary_attachments`, `POST /upload_d_n_d/attachments` et `Controllers::Uploadable#attach_file`
 
@@ -17,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Garde-fous : un blob rattaché à un record ou à un fichier temporaire n'est jamais supprimé, ni au refus ni à l'exécution du job (revérifié). Un blob plus ancien que la fenêtre est conservé (il peut être cité dans un HTML stocké). Rien n'est supprimé si l'autorisation n'a pas été explicitement accordée : refus (401, 403) ou autorisation qui n'aboutit pas (exception, policy absente)
 - Le job utilise la file `active_storage.queues.purge`, comme `ActiveStorage::PurgeJob` : rien à configurer si la purge Active Storage fonctionne déjà
 - Les blobs orphelins déjà présents ne sont pas concernés : leur nettoyage est prévu séparément
+- **Pour les apps** : un `signed_id` accepté jusqu'ici peut désormais être refusé. Le composant n'envoie que des fichiers fraîchement déposés et n'est pas concerné. Une app qui réutilise volontairement un fichier existant (duplication d'un record par `signed_id`, par exemple) doit le faire hors des endpoints de la gem (`record.file.attach(blob)` côté serveur) — ou, pour une vraie copie, passer par `blob.open` + `attach(io:)`
 
 ## [0.7.2] - 2026-10-16
 

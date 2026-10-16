@@ -8,6 +8,7 @@ fr:
 
     errors:
       blob_not_found: "Fichier non trouvé"
+      blob_already_attached: "Ce fichier est déjà utilisé ailleurs. Déposez-le à nouveau."
       corrupted: "Le fichier semble corrompu ou modifié"
       unrepresentable: "Le fichier n'est pas traitable"
       unauthorized: "Vous n'êtes pas autorisé à modifier ce fichier"

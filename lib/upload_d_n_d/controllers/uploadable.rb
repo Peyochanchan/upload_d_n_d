@@ -104,19 +104,20 @@ module UploadDND
       blob = ActiveStorage::Blob.find_signed(params[:signed_blob_id])
       attribute_name = params[:attribute_name]
 
+      # SÉCURITÉ : un blob déjà rattaché (signed_id visible dans chaque URL de
+      # fichier) n'est pas rattaché une seconde fois. Pas de purge : il
+      # appartient à un autre record.
+      if blob&.attachments&.exists?
+        render_attach_file_error(I18n.t("upload_d_n_d.errors.blob_already_attached"))
+        return
+      end
+
       # SÉCURITÉ : attribute_name vient du client — seul un attachment déclaré
       # sur le modèle est résolu, jamais une méthode quelconque (destroy...).
       attachment = UploadDND::AttachmentLookup.find(record, attribute_name)
       unless attachment
         discard_rejected_upload_blob(blob, authorized)
-        message = I18n.t("upload_d_n_d.errors.invalid_attribute", attribute: attribute_name)
-        respond_to do |format|
-          format.turbo_stream do
-            flash.now[:alert] = message
-            render turbo_stream: turbo_stream.replace("flash_messages", partial: "shared/flashes"), status: :unprocessable_entity
-          end
-          format.json { render json: { error: message }, status: :unprocessable_entity }
-        end
+        render_attach_file_error(I18n.t("upload_d_n_d.errors.invalid_attribute", attribute: attribute_name))
         return
       end
 
@@ -207,6 +208,16 @@ module UploadDND
     end
 
     private
+
+    def render_attach_file_error(message)
+      respond_to do |format|
+        format.turbo_stream do
+          flash.now[:alert] = message
+          render turbo_stream: turbo_stream.replace("flash_messages", partial: "shared/flashes"), status: :unprocessable_entity
+        end
+        format.json { render json: { error: message }, status: :unprocessable_entity }
+      end
+    end
 
     # Blob envoyé par DirectUpload puis refusé : purgé sous les garde-fous de
     # UploadDND::RejectedBlob, et seulement si l'autorisation a réussi. Un échec

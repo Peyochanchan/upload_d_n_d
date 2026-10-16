@@ -521,6 +521,7 @@ UploadDND implémente plusieurs couches de sécurité :
 4. **Autorisation** : Support Pundit/CanCanCan
 5. **Session isolation** : Les fichiers temporaires sont isolés par session
 6. **Logging** : Audit trail complet de tous les uploads/suppressions
+7. **Un fichier = un propriétaire** : un `signed_id` déjà rattaché (à un record ou à un fichier temporaire) est refusé (422). Le `signed_id` figure dans chaque URL de fichier : sans ce contrôle, un tiers pourrait rattacher le fichier d'un autre à ses propres records
 
 Exemple (anti-spoofing activé) :
 

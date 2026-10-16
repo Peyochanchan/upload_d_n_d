@@ -24,6 +24,7 @@ module UploadDND
     before_action :authorize_delete!, only: [ :destroy, :purge ]
 
     before_action :find_temp_attachment, only: [ :destroy ]
+    before_action :reject_attached_blob, only: [ :create ]
     before_action :validate_blob_constraints, only: [ :create ]
 
     # GET /upload_d_n_d/temporary_attachments?attribute_name=documents
