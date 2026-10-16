@@ -23,6 +23,7 @@ module UploadDND
   class AttachmentsController < BaseAttachmentsController
     # Autorisation Pundit (si disponible)
     before_action :authorize_upload!, only: [ :create ]
+    before_action :reject_attached_blob, only: [ :create ]
 
     before_action :validate_record_gid_presence, only: [ :create ]
     before_action :validate_destroy_params, only: [ :destroy ]

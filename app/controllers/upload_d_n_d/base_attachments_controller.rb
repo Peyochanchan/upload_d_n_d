@@ -87,6 +87,17 @@ module UploadDND
 
     # === Callbacks de validation ===
 
+    # SÉCURITÉ : le signed_id vient du navigateur et figure dans chaque URL de
+    # fichier. Un blob déjà rattaché (record ou fichier temporaire) n'est pas
+    # rattaché une seconde fois : il serait partagé avec un autre record.
+    # À déclarer dans les sous-classes après l'autorisation, avant toute écriture.
+    def reject_attached_blob
+      return unless @blob&.attachments&.exists?
+
+      Rails.logger.warn "UploadDND: already attached blob #{@blob.id} refused"
+      render_error(I18n.t("upload_d_n_d.errors.blob_already_attached"), :unprocessable_entity)
+    end
+
     def validate_params
       unless params[:signed_blob_id].present? && params[:attribute_name].present?
         render_error(I18n.t("upload_d_n_d.errors.missing_params"), :bad_request)

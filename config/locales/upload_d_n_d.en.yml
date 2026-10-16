@@ -8,6 +8,7 @@ en:
 
     errors:
       blob_not_found: "File not found"
+      blob_already_attached: "This file is already in use elsewhere. Please upload it again."
       corrupted: "The file appears to be corrupted or modified"
       unrepresentable: "The file cannot be processed"
       unauthorized: "You are not authorized to update this file"

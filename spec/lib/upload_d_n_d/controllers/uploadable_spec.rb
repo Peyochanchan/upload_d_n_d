@@ -308,6 +308,21 @@ RSpec.describe UploadableTestController, type: :controller do
           expect(blob_exists?).to be true
         end
 
+        # SÉCURITÉ (S3) : un blob déjà rattaché n'est pas rattaché une seconde fois.
+        it 'refuses a blob already attached to another record (422) and leaves it intact' do
+          owner = User.create!(name: 'Owner', email: 'owner@example.com')
+          owner.avatar.attach(blob)
+
+          perform_enqueued_jobs do
+            post :attach_file, params: { signed_blob_id: blob.signed_id, attribute_name: 'avatar' }, format: :json
+          end
+
+          expect(response).to have_http_status(:unprocessable_entity)
+          expect(JSON.parse(response.body)['error']).to eq(I18n.t('upload_d_n_d.errors.blob_already_attached'))
+          expect(user.reload.avatar).not_to be_attached
+          expect(owner.reload.avatar.blob).to eq(blob)
+        end
+
         it 'keeps the blob on success' do
           perform_enqueued_jobs do
             post :attach_file, params: { signed_blob_id: blob.signed_id, attribute_name: 'avatar' }, format: :json
