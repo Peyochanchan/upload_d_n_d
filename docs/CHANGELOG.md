@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-19
+
+Durcissement de la sécurité avant 1.0 : autorisation fail-closed, limites d'un champ appliquées côté serveur dès le dépôt, et statuts d'erreur corrects sur les réponses Turbo Stream. Version mineure, rétrocompatible, avec notes de migration (voir ci-dessous). **Mise à jour recommandée.** Les apps avec Pundit ou CanCanCan détecté automatiquement n'ont rien à changer.
+
 ### Security
 - **Autorisation fail-closed** : la gem n'autorisait que si l'adaptateur valait `:pundit` et que Pundit était chargé. Dans tous les autres cas, uploads et suppressions passaient sans contrôle et sans avertissement : aucune librairie détectée (`nil`), `:cancancan` (détecté mais jamais implémenté), `:pundit` sans Pundit chargé. Côté concern `Controllers::Uploadable`, `attach_file` et `remove_file` sautaient l'autorisation quand le contrôleur n'avait pas de méthode `authorize`. Toute autorisation passe désormais par un port unique (`UploadDND::Authorization`). Sans adaptateur utilisable (`nil`, valeur inconnue), la requête est refusée (403). Un adaptateur déclaré mais inutilisable fait échouer la requête (500, `UploadDND::Authorization::ConfigurationError`)
 - **Limites d'un champ appliquées au dépôt** : `POST /upload_d_n_d/attachments` et `Controllers::Uploadable#attach_file` n'appliquaient aucune limite de taille ni de type (seule la validation du modèle, à l'enregistrement, protégeait), et `POST /upload_d_n_d/temporary_attachments` n'appliquait que les limites globales. Le transfert des fichiers temporaires vers le record (`Uploadable#attach_temporary_uploads`, `TemporaryAttachment.attach_to_record`) ne validait rien : un fichier hors limites du champ y était attaché. Les limites du champ (`uploadable`) sont désormais vérifiées au dépôt sur les trois points d'entrée, et de nouveau au transfert (fichier écarté et journalisé). Un fichier refusé est purgé
