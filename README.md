@@ -8,7 +8,7 @@ Un système de drag & drop sécurisé et élégant pour vos applications Rails, 
 - **Validation sécurisée côté serveur** (MIME type, taille, nombre de fichiers)
 - **Upload temporaire** pour les formulaires de création (avant persistance)
 - **Support multi-fichiers** (has_one_attached et has_many_attached)
-- **Autorisation flexible** (Pundit, CanCanCan, ou custom)
+- **Autorisation fail-closed** (Pundit, CanCanCan, ou désactivation explicite)
 - **Protection contre le spoofing** de fichiers via détection MIME
 - **Logging et audit trail** complet
 - **Configuration globale et par composant**
@@ -100,6 +100,10 @@ UploadDND.configure do |config|
 
   # Durée de conservation des fichiers temporaires (en jours)
   config.temporary_files_retention = 7
+
+  # Autorisation : :pundit ou :cancancan (détectés automatiquement), ou :none.
+  # Sans adaptateur utilisable, tout upload et toute suppression sont refusés.
+  # config.authorization_adapter = :pundit
 
   # Rate limiting (protection contre les abus)
   config.rate_limit_enabled = true         # Activer/désactiver le rate limiting
@@ -339,7 +343,7 @@ fetch("/upload_d_n_d/temporary_attachments?attribute_name=documents", {
 }).then(() => Turbo.visit(backUrl))
 ```
 
-Scopé sur la session courante ; soumis à la policy `destroy?` si Pundit est activé.
+Scopé sur la session courante ; soumis à la règle `destroy` de l'adaptateur d'autorisation.
 
 ### 3. Utilisation dans différents namespaces
 
@@ -484,7 +488,30 @@ redéfinir dans le `ApplicationHelper` de votre app. **Ne shadowez pas le
 partial `_files_list`** pour ça : un partial copié ne suit pas les mises à
 jour de la gem.
 
-### 4. Autorisation (optionnel)
+### 4. Autorisation
+
+Chaque upload et chaque suppression passe par la librairie d'autorisation de
+l'app, choisie par `config.authorization_adapter` :
+
+| Valeur | Comportement |
+|---|---|
+| `:pundit` | Détecté automatiquement si Pundit est chargé. Le contrôleur doit inclure `Pundit::Authorization` |
+| `:cancancan` | Détecté automatiquement si CanCanCan est chargé (et Pundit absent) |
+| `:none` | Aucune autorisation, seulement l'authentification. Signalé au démarrage |
+| `nil` ou autre | **Tout est refusé (403)**. Signalé au démarrage |
+
+Règles vérifiées :
+
+| Action | Pundit | CanCanCan |
+|---|---|---|
+| Upload sur un record | `UploadDNDAttachmentPolicy#create?` puis `update?` du record (ignoré si le modèle n'a pas de policy) | `:create, :upload_d_n_d_attachment` puis `:update, record` |
+| Suppression sur un record | `update?` du record, sinon `UploadDNDAttachmentPolicy#destroy?` | `:update, record` |
+| Upload temporaire | `UploadDNDTemporaryAttachmentPolicy#create?` | `:create, :upload_d_n_d_temporary_attachment` |
+| Suppression temporaire, purge | `UploadDNDTemporaryAttachmentPolicy#destroy?` | `:destroy, :upload_d_n_d_temporary_attachment` |
+| `attach_file`, `remove_file` (concern) | `update?` du record (policy namespacée d'abord) | `:update, record` |
+
+Avec Pundit, une policy générique absente fait échouer la requête (500)
+plutôt que de la laisser passer : `rails g upload_d_n_d:policy` les génère.
 
 #### Avec Pundit
 
@@ -505,6 +532,10 @@ class Ability
   include CanCan::Ability
 
   def initialize(user)
+    return unless user
+
+    can :create, :upload_d_n_d_attachment
+    can [ :create, :destroy ], :upload_d_n_d_temporary_attachment
     can :update, User, id: user.id
   end
 end
@@ -518,7 +549,7 @@ UploadDND implémente plusieurs couches de sécurité :
    - **Anti-spoofing (optionnel)** : si vous utilisez le `FileValidator`, activez `strict_mime_check: true` pour analyser le contenu réel du fichier via Marcel (plus coûteux car nécessite de lire le fichier côté serveur).
 2. **Protection CSRF** : Tokens automatiques pour tous les uploads
 3. **Validation de paramètres** : Empêche l'injection de paramètres malveillants
-4. **Autorisation** : Support Pundit/CanCanCan
+4. **Autorisation fail-closed** : Pundit ou CanCanCan ; sans adaptateur utilisable, tout est refusé. La désactivation (`:none`) est explicite et signalée au démarrage
 5. **Session isolation** : Les fichiers temporaires sont isolés par session
 6. **Logging** : Audit trail complet de tous les uploads/suppressions
 7. **Un fichier = un propriétaire** : un `signed_id` déjà rattaché (à un record ou à un fichier temporaire) est refusé (422). Le `signed_id` figure dans chaque URL de fichier : sans ce contrôle, un tiers pourrait rattacher le fichier d'un autre à ses propres records

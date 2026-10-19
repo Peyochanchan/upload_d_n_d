@@ -7,6 +7,10 @@ RSpec.describe UploadableTestController, type: :controller do
   # Rails.application.routes (sinon, specs ordre-dépendantes).
   routes { ActionDispatch::Routing::RouteSet.new }
 
+  # Opt-out explicite par défaut ; les specs d'autorisation choisissent leur adaptateur.
+  before { UploadDND.configuration.authorization_adapter = :none }
+  after { UploadDND.reset_configuration! }
+
   before do
     routes.draw do
       get 'index' => 'uploadable_test#index'
@@ -172,21 +176,64 @@ RSpec.describe UploadableTestController, type: :controller do
   describe '#authorize_record_for_update' do
     let(:user) { User.create!(name: 'Test', email: 'test@example.com') }
 
-    context 'when Pundit is not defined' do
-      it 'does not raise error' do
-        hide_const('Pundit') if defined?(Pundit)
-
+    context 'with authorization_adapter = :none' do
+      it 'lets the request through' do
         expect {
           controller.send(:authorize_record_for_update, user)
         }.not_to raise_error
       end
     end
 
+    # SÉCURITÉ (S1) : sans adaptateur, la requête était autorisée en silence.
+    context 'without a usable adapter (fail-closed)' do
+      it 'refuses when no adapter is configured (nil)' do
+        UploadDND.configuration.authorization_adapter = nil
+
+        expect {
+          controller.send(:authorize_record_for_update, user)
+        }.to raise_error(UploadDND::Authorization::Denied)
+      end
+
+      it 'refuses an unknown adapter' do
+        UploadDND.configuration.authorization_adapter = :custom
+
+        expect {
+          controller.send(:authorize_record_for_update, user)
+        }.to raise_error(UploadDND::Authorization::Denied)
+      end
+
+      it 'raises a configuration error when :pundit is set but Pundit is missing' do
+        hide_const('Pundit') if defined?(Pundit)
+        UploadDND.configuration.authorization_adapter = :pundit
+
+        expect {
+          controller.send(:authorize_record_for_update, user)
+        }.to raise_error(UploadDND::Authorization::ConfigurationError)
+      end
+
+      it 'raises a configuration error when the controller cannot call authorize' do
+        stub_pundit!
+        allow(controller).to receive(:respond_to?).and_call_original
+        allow(controller).to receive(:respond_to?).with(:authorize, true).and_return(false)
+
+        expect {
+          controller.send(:authorize_record_for_update, user)
+        }.to raise_error(UploadDND::Authorization::ConfigurationError)
+      end
+    end
+
     context 'when Pundit is defined' do
       before do
-        # Simuler la présence de Pundit
-        stub_const('Pundit', Module.new)
+        stub_pundit!
         allow(controller).to receive(:authorize)
+      end
+
+      it 're-raises the native Pundit error for the host rescue_from' do
+        allow(controller).to receive(:authorize).and_raise(Pundit::NotAuthorizedError)
+
+        expect {
+          controller.send(:authorize_record_for_update, user)
+        }.to raise_error(Pundit::NotAuthorizedError)
       end
 
       it 'calls authorize without namespace for regular controllers' do
@@ -197,6 +244,8 @@ RSpec.describe UploadableTestController, type: :controller do
     end
 
     context 'when authorize is a private method (Pundit::Authorization)' do
+      before { stub_pundit! }
+
       it 'still calls authorize instead of silently skipping authorization' do
         # allow/expect définissent une méthode publique, ce qui masquait le
         # bug : Pundit expose authorize en privé, et respond_to?(:authorize)
@@ -297,13 +346,13 @@ RSpec.describe UploadableTestController, type: :controller do
         end
 
         it 'modifies nothing when authorization is refused' do
-          not_authorized = Class.new(StandardError)
-          controller.singleton_class.define_method(:authorize) { |*| raise not_authorized }
+          stub_pundit!
+          controller.singleton_class.define_method(:authorize) { |*| raise Pundit::NotAuthorizedError }
 
           perform_enqueued_jobs do
             expect {
               post :attach_file, params: { signed_blob_id: blob.signed_id, attribute_name: 'avatar' }, format: :json
-            }.to raise_error(not_authorized)
+            }.to raise_error(Pundit::NotAuthorizedError)
           end
           expect(blob_exists?).to be true
         end
@@ -478,9 +527,11 @@ RSpec.describe Admin::ProjectsController, type: :controller do
     let(:user) { User.create!(name: 'Test', email: 'test@example.com') }
 
     before do
-      stub_const('Pundit', Module.new)
+      stub_pundit!
       allow(controller).to receive(:authorize)
     end
+
+    after { UploadDND.reset_configuration! }
 
     it 'calls authorize with namespace for namespaced controllers' do
       expect(controller).to receive(:authorize).with([ :admin, user ], :update?)
@@ -493,7 +544,6 @@ RSpec.describe Admin::ProjectsController, type: :controller do
       # routes) avec une ConventionPolicy top-level — pas de
       # Projects::ConventionPolicy. Le namespace controller organise les
       # routes, pas forcément les policies.
-      stub_const('Pundit::NotDefinedError', Class.new(StandardError))
       calls = []
       allow(controller).to receive(:authorize) do |target, query|
         calls << [ target, query ]
@@ -505,8 +555,15 @@ RSpec.describe Admin::ProjectsController, type: :controller do
       expect(calls).to eq([ [ [ :admin, user ], :update? ], [ user, :update? ] ])
     end
 
+    it 're-raises Pundit::NotDefinedError when no policy exists at all' do
+      allow(controller).to receive(:authorize).and_raise(Pundit::NotDefinedError)
+
+      expect {
+        controller.send(:authorize_record_for_update, user)
+      }.to raise_error(Pundit::NotDefinedError)
+    end
+
     it 'does not swallow other authorization errors' do
-      stub_const('Pundit::NotDefinedError', Class.new(StandardError))
       not_authorized = Class.new(StandardError)
       allow(controller).to receive(:authorize).and_raise(not_authorized)
 
@@ -539,9 +596,11 @@ RSpec.describe Admin::Nested::ProjectsController, type: :controller do
     let(:user) { User.create!(name: 'Test', email: 'test@example.com') }
 
     before do
-      stub_const('Pundit', Module.new)
+      stub_pundit!
       allow(controller).to receive(:authorize)
     end
+
+    after { UploadDND.reset_configuration! }
 
     it 'calls authorize with all namespace parts' do
       expect(controller).to receive(:authorize).with([ :admin, :nested, user ], :update?)

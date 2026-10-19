@@ -13,7 +13,7 @@ RSpec.describe UploadDND::BaseAttachmentsController, type: :controller do
   before do
     UploadDND.configure do |config|
       config.require_authentication = false
-      config.authorization_adapter = nil
+      config.authorization_adapter = :none
       config.accepted_types = nil
     end
     allow(controller).to receive(:session).and_return({ id: session_id })
@@ -277,7 +277,8 @@ RSpec.describe UploadDND::BaseAttachmentsController, type: :controller do
         }, format: :json
 
         expect(response).to have_http_status(:bad_request)
-        expect(JSON.parse(response.body)['error']).to eq('Custom error')
+        # Le détail de l'exception n'est jamais renvoyé au client.
+        expect(JSON.parse(response.body)['error']).to eq(I18n.t('upload_d_n_d.errors.bad_request'))
       end
     end
 
@@ -346,21 +347,17 @@ RSpec.describe UploadDND::BaseAttachmentsController, type: :controller do
     end
   end
 
-  describe 'pundit integration' do
-    it 'returns falsey when Pundit is not configured' do
-      expect(controller.send(:pundit_enabled?)).to be_falsey
-    end
+  describe 'authorization adapter' do
+    let(:blob) { ActiveStorage::Blob.create_and_upload!(io: StringIO.new("test"), filename: 'test.txt') }
 
-    it 'returns falsey when Pundit is configured but not loaded' do
-      # Dans l'environnement de test, Pundit n'est pas chargé
-      # donc même si on configure :pundit, pundit_enabled? retourne false
-      UploadDND.configure do |config|
-        config.authorization_adapter = :pundit
-      end
-
-      # Pundit n'est pas défini dans les tests, donc retourne falsey
+    # SÉCURITÉ (S1) : :pundit sans Pundit chargé laissait passer en silence.
+    it 'fails closed (500) when :pundit is configured but Pundit is not loaded' do
+      UploadDND.configuration.authorization_adapter = :pundit
       expect(defined?(Pundit)).to be_nil
-      expect(controller.send(:pundit_enabled?)).to be_falsey
+
+      post :create, params: { signed_blob_id: blob.signed_id, attribute_name: 'documents' }, format: :json
+
+      expect(response).to have_http_status(:internal_server_error)
     end
   end
 end

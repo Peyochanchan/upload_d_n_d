@@ -22,6 +22,12 @@ module UploadDND
       end
     end
 
+    # Uploads non protégés par une librairie d'autorisation : signalé au
+    # démarrage, une fois les initializers de l'app passés.
+    config.after_initialize do
+      UploadDND::Authorization.report
+    end
+
     # Assets : JS (importmap) + CSS (asset pipeline)
     initializer "upload_d_n_d.assets" do |app|
       # JS : rend les fichiers disponibles pour importmap

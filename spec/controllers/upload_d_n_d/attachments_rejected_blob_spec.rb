@@ -27,7 +27,7 @@ RSpec.describe UploadDND::AttachmentsController, type: :controller do
   before do
     UploadDND.configure do |config|
       config.require_authentication = false
-      config.authorization_adapter = nil
+      config.authorization_adapter = :none
     end
     allow(controller).to receive(:session).and_return({ id: SecureRandom.uuid })
   end

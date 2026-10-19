@@ -13,7 +13,7 @@ RSpec.describe 'Temporary attachments across a real session', type: :request do
   before do
     UploadDND.configure do |config|
       config.require_authentication = false
-      config.authorization_adapter = nil
+      config.authorization_adapter = :none
     end
   end
 

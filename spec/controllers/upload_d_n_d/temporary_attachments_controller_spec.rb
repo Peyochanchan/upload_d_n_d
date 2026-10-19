@@ -17,7 +17,7 @@ RSpec.describe UploadDND::TemporaryAttachmentsController, type: :controller do
   before do
     UploadDND.configure do |config|
       config.require_authentication = false
-      config.authorization_adapter = nil
+      config.authorization_adapter = :none
     end
     allow(controller).to receive(:session).and_return({ id: session_id })
   end
@@ -324,6 +324,8 @@ RSpec.describe UploadDND::TemporaryAttachmentsController, type: :controller do
 
         expect(response).to have_http_status(:unprocessable_entity)
         expect(JSON.parse(response.body)['error']).to include('Impossible de vérifier le type de fichier')
+        # Le détail de l'exception reste dans les logs.
+        expect(response.body).not_to include('boom')
       end
     end
   end

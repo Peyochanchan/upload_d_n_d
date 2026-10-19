@@ -19,7 +19,11 @@ module UploadDND
   # Remède côté app : resolve() dans config/routes.rb, ou surcharge du helper
   # udnd_remove_file_url. Voir README, section "Records imbriqués".
   class UnroutableRecordError < Error; end
+end
 
+require "upload_d_n_d/authorization"
+
+module UploadDND
   # Autoload des concerns, helpers et autres composants
   # Ces fichiers seront chargés automatiquement par le moteur Rails
 

@@ -19,7 +19,7 @@ module UploadDND
   # 2. User submit form → UsersController calls attach_upload_d_n_d_files helper
   # 3. Helper transfers temp files to real record and destroys TemporaryAttachment
   class TemporaryAttachmentsController < BaseAttachmentsController
-    # Autorisation Pundit (si disponible)
+    # Autorisation (UploadDND::Authorization, fail-closed)
     before_action :authorize_upload!, only: [ :create ]
     before_action :authorize_delete!, only: [ :destroy, :purge ]
 
@@ -213,10 +213,9 @@ module UploadDND
         nil
       end
     rescue StandardError => e
-      render_error(
-        I18n.t("upload_d_n_d.errors.mime_detection_failed", message: e.message),
-        :unprocessable_entity
-      )
+      # Le détail reste dans les logs, jamais dans la réponse.
+      Rails.logger.warn "UploadDND: MIME detection failed - #{e.class}: #{e.message}"
+      render_error(I18n.t("upload_d_n_d.errors.mime_detection_failed"), :unprocessable_entity)
     end
 
     def normalized_accepted_types
@@ -237,18 +236,16 @@ module UploadDND
     # === Autorisation ===
 
     def authorize_upload!
-      authorize :upload_d_n_d_temporary_attachment, :create? if pundit_enabled?
+      authorize_with_adapter!(:upload_d_n_d_temporary_attachment, :create)
       grant_upload_authorization!
-    rescue Pundit::NotAuthorizedError
-      render_error(I18n.t("upload_d_n_d.errors.unauthorized"), :forbidden)
+    rescue UploadDND::Authorization::Denied
+      render_forbidden
     end
 
     def authorize_delete!
-      return unless pundit_enabled?
-
-      authorize :upload_d_n_d_temporary_attachment, :destroy?
-    rescue Pundit::NotAuthorizedError
-      render_error(I18n.t("upload_d_n_d.errors.unauthorized"), :forbidden)
+      authorize_with_adapter!(:upload_d_n_d_temporary_attachment, :destroy)
+    rescue UploadDND::Authorization::Denied
+      render_forbidden
     end
   end
 end

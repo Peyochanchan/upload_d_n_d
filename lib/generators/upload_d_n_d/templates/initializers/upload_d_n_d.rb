@@ -29,9 +29,9 @@ UploadDND.configure do |config|
   # nil désactive la purge des fichiers refusés.
   # config.rejected_blob_purge_window = 1.hour
 
-  # Classe utilisée pour l'autorisation (Pundit, CanCanCan, ou nil)
-  # Détection automatique par défaut
-  # config.authorization_adapter = :pundit # ou :cancancan, ou nil
+  # Autorisation : :pundit ou :cancancan (détection automatique), ou :none
+  # pour s'en passer. Sans adaptateur utilisable, tout est refusé (403).
+  # config.authorization_adapter = :pundit # ou :cancancan, ou :none
 
   # Validateur personnalisé
   # Par défaut, utilise FileValidator si disponible
