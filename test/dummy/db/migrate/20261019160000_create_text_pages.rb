@@ -1,4 +1,4 @@
-class CreateTextPages < ActiveRecord::Migration[8.1]
+class CreateTextPages < ActiveRecord::Migration[7.2]
   def change
     create_table :text_pages do |t|
       t.text :body
