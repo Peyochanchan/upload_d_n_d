@@ -7,7 +7,7 @@ Ce guide explique comment configurer l'authentification et l'autorisation pour l
 1. [Configuration de base](#configuration-de-base)
 2. [Avec Pundit](#avec-pundit)
 3. [Avec CanCanCan](#avec-cancancan)
-4. [Autorisation personnalisée](#autorisation-personnalisée)
+4. [Sans librairie d'autorisation](#sans-librairie-dautorisation)
 5. [Exemples complets](#exemples-complets)
 
 ---
@@ -40,8 +40,15 @@ UploadDND détecte automatiquement si vous utilisez Pundit ou CanCanCan :
 
 ```ruby
 # Détection automatique dans la configuration
-config.authorization_adapter # => :pundit ou :cancancan ou nil
+config.authorization_adapter # => :pundit, :cancancan, ou nil
 ```
+
+L'autorisation est **fail-closed** : sans adaptateur utilisable (`nil`, valeur
+inconnue), tout upload et toute suppression sont refusés (403), et un
+avertissement est journalisé au démarrage. Un adaptateur déclaré mais
+inutilisable (`:pundit` sans `Pundit::Authorization` dans le contrôleur, par
+exemple) fait échouer la requête (500). Pour se passer d'autorisation, il faut
+le déclarer : `config.authorization_adapter = :none`.
 
 ---
 
@@ -164,6 +171,17 @@ end
 
 ### Étape 2 : Définir les abilities
 
+Les sujets génériques sont des symboles. Sans règle, CanCanCan refuse : il
+n'y a pas de repli comme avec Pundit, la règle `:update` du record est donc
+exigée pour l'upload et la suppression sur un record existant.
+
+| Action | Règle |
+|---|---|
+| Upload sur un record | `:create, :upload_d_n_d_attachment` puis `:update, record` |
+| Suppression sur un record | `:update, record` |
+| Upload temporaire | `:create, :upload_d_n_d_temporary_attachment` |
+| Suppression temporaire, purge | `:destroy, :upload_d_n_d_temporary_attachment` |
+
 ```ruby
 # app/models/ability.rb
 class Ability
@@ -171,6 +189,9 @@ class Ability
 
   def initialize(user)
     user ||= User.new # guest user (not logged in)
+
+    can :create, :upload_d_n_d_attachment
+    can :update, Document, user_id: user.id
 
     if user.admin?
       # Admins peuvent tout faire
@@ -188,40 +209,19 @@ end
 
 ---
 
-## Autorisation personnalisée
+## Sans librairie d'autorisation
 
-Si vous n'utilisez ni Pundit ni CanCanCan, vous pouvez surcharger les méthodes d'autorisation dans votre ApplicationController :
-
-### Méthode 1 : Surcharger dans ApplicationController
-
-```ruby
-# app/controllers/application_controller.rb
-class ApplicationController < ActionController::Base
-  def authorize_upload_d_n_d_create!
-    # Votre logique personnalisée
-    unless current_user&.can_upload?
-      render json: { error: "Non autorisé" }, status: :forbidden
-    end
-  end
-
-  def authorize_upload_d_n_d_destroy!
-    # Votre logique personnalisée
-    unless current_user&.can_delete_uploads?
-      render json: { error: "Non autorisé" }, status: :forbidden
-    end
-  end
-end
-```
-
-### Méthode 2 : Désactiver complètement l'autorisation
+Sans Pundit ni CanCanCan, la gem refuse tout tant que l'absence
+d'autorisation n'est pas déclarée. Seule l'authentification est alors vérifiée
+(`require_authentication`) : tout utilisateur connecté peut uploader et
+supprimer sur n'importe quel record dont il connaît le GlobalID.
 
 **⚠️ Non recommandé en production**
 
 ```ruby
 # config/initializers/upload_d_n_d.rb
 UploadDND.configure do |config|
-  config.authorization_adapter = nil
-  config.require_authentication = false
+  config.authorization_adapter = :none
 end
 ```
 
@@ -492,6 +492,12 @@ Vérifiez que :
 1. Vous avez généré la policy : `rails g upload_d_n_d:policy`
 2. La policy retourne `true` pour `create?` ou `destroy?`
 3. `config.authorization_adapter = :pundit` est bien configuré
+
+### Tous les uploads sont refusés (403)
+
+Aucun adaptateur utilisable : le log de démarrage indique `no usable
+authorization adapter`. Déclarez `config.authorization_adapter` (`:pundit`,
+`:cancancan` ou `:none`).
 
 ### "Vous devez être connecté"
 

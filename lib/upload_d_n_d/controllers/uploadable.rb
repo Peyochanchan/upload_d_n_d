@@ -53,31 +53,18 @@ module UploadDND
       )
     end
 
-    # Autorise un record pour update (compatible avec Pundit namespaces)
+    # Autorise un record pour update via UploadDND::Authorization
+    # (fail-closed). Avec Pundit, la policy namespacée du controller est
+    # essayée d'abord (Admin::RecordPolicy), puis la policy top-level.
+    #
+    # L'erreur native de la librairie (Pundit::NotAuthorizedError...) est
+    # relancée telle quelle, pour les rescue_from de l'app.
     #
     # @param record [ApplicationRecord] le record à autoriser
     def authorize_record_for_update(record)
-      # On vérifie si authorize est disponible (Pundit ou autre).
-      # include_all: true indispensable : Pundit::Authorization#authorize est
-      # privée — sans lui, respond_to? renvoie false et l'action s'exécute
-      # SANS autorisation (fail-open), avec un 500 verify_authorized après coup.
-      return unless respond_to?(:authorize, true)
-
-      ns = controller_namespace
-      return authorize(record, :update?) unless ns
-
-      # Avec namespace controller : essayer d'abord la policy namespacée
-      # (authorize [:admin, record] -> Admin::RecordPolicy), puis fallback
-      # sur la policy top-level. Un namespace de controller (module: dans
-      # les routes) ne reflète pas forcément celui des policies.
-      ns_symbols = ns.underscore.split("/").map(&:to_sym)
-      begin
-        authorize [ *ns_symbols, record ], :update?
-      rescue StandardError => e
-        raise unless defined?(Pundit::NotDefinedError) && e.is_a?(Pundit::NotDefinedError)
-
-        authorize record, :update?
-      end
+      UploadDND::Authorization.authorize!(self, record, :update, namespace: policy_namespace)
+    rescue UploadDND::Authorization::Denied, UploadDND::Authorization::RuleMissing => e
+      raise e.cause || e
     end
 
     # Action pour attacher un fichier à un record existant (appelée via route de l'app)
@@ -241,6 +228,11 @@ module UploadDND
       else
         nil
       end
+    end
+
+    # Namespace du controller en symboles : Admin::Internal -> [:admin, :internal]
+    def policy_namespace
+      controller_namespace&.underscore&.split("/")&.map(&:to_sym)
     end
 
     # @deprecated Utilisez GlobalID à la place (params[:record_gid])

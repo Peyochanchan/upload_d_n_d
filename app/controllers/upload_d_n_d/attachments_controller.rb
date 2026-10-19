@@ -21,7 +21,7 @@ module UploadDND
   #
   # Note: Pour les formulaires SANS record (ex: new User), utilisez TemporaryAttachmentsController.
   class AttachmentsController < BaseAttachmentsController
-    # Autorisation Pundit (si disponible)
+    # Autorisation (UploadDND::Authorization, fail-closed)
     before_action :authorize_upload!, only: [ :create ]
     before_action :reject_attached_blob, only: [ :create ]
 
@@ -142,39 +142,35 @@ module UploadDND
       end
     end
 
-    # Autorisation de la suppression : policy Pundit du record (update?),
-    # avec fallback sur la policy générique de la gem si le modèle n'a pas
-    # de policy. Fail-closed : sans policy du tout, Pundit::NotDefinedError
-    # remonte en 500 plutôt que de laisser passer.
+    # Autorisation de la suppression : règle du record (update), avec repli
+    # sur la règle générique de la gem si le modèle n'en a pas (Pundit : pas
+    # de policy). Fail-closed : sans règle du tout, RuleMissing remonte en 500
+    # plutôt que de laisser passer.
     def authorize_destroy!(record)
-      return unless pundit_enabled?
-
       begin
-        authorize record, :update?
-      rescue Pundit::NotDefinedError
-        authorize :upload_d_n_d_attachment, :destroy?
+        authorize_with_adapter!(record, :update)
+      rescue UploadDND::Authorization::RuleMissing
+        authorize_with_adapter!(:upload_d_n_d_attachment, :destroy)
       end
-    rescue Pundit::NotAuthorizedError
-      render_error(I18n.t("upload_d_n_d.errors.unauthorized"), :forbidden)
+    rescue UploadDND::Authorization::Denied
+      render_forbidden
     end
 
     # Autorisation de l'upload sur le record lui-même (policy update?), en plus
     # de la policy générique vérifiée en before_action : le record_gid vient du
     # client, sans ce contrôle tout utilisateur autorisé à uploader pouvait
     # attacher un fichier à n'importe quel record. Si le modèle n'a pas de
-    # policy, la policy générique (create?) déjà vérifiée fait foi.
+    # règle, la règle générique (create) déjà vérifiée fait foi.
     def authorize_record_upload!(record)
-      return unless pundit_enabled?
-
       revoke_upload_authorization!
       begin
-        authorize record, :update?
-      rescue Pundit::NotDefinedError
-        nil # policy générique déjà vérifiée
+        authorize_with_adapter!(record, :update)
+      rescue UploadDND::Authorization::RuleMissing
+        nil # règle générique déjà vérifiée
       end
       grant_upload_authorization!
-    rescue Pundit::NotAuthorizedError
-      render_error(I18n.t("upload_d_n_d.errors.unauthorized"), :forbidden)
+    rescue UploadDND::Authorization::Denied
+      render_forbidden
     end
 
     def validate_record_gid_presence
@@ -205,10 +201,10 @@ module UploadDND
     # Policy générique ; la policy du record est vérifiée ensuite
     # (authorize_record_upload!), une fois le record localisé.
     def authorize_upload!
-      authorize :upload_d_n_d_attachment, :create? if pundit_enabled?
+      authorize_with_adapter!(:upload_d_n_d_attachment, :create)
       grant_upload_authorization!
-    rescue Pundit::NotAuthorizedError
-      render_error(I18n.t("upload_d_n_d.errors.unauthorized"), :forbidden)
+    rescue UploadDND::Authorization::Denied
+      render_forbidden
     end
   end
 end

@@ -53,10 +53,12 @@ module UploadDND
 
     private
 
-    # Détecte automatiquement l'adapter d'autorisation disponible
+    # Détecte l'adaptateur d'autorisation disponible. nil si aucun : tout
+    # est alors refusé (UploadDND::Authorization), sauf :none explicite.
     def detect_authorization_adapter
-      return :pundit if defined?(Pundit)
-      return :cancancan if defined?(CanCanCan)
+      return :pundit if defined?(::Pundit)
+      return :cancancan if defined?(::CanCan::Ability)
+
       nil
     end
   end

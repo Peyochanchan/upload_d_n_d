@@ -6,7 +6,7 @@ module UploadDND
   #
   # Responsabilités:
   # - Validation des paramètres (signed_blob_id, attribute_name)
-  # - Authentification et autorisation (Devise/Pundit)
+  # - Authentification et autorisation (Devise, UploadDND::Authorization)
   # - Gestion des erreurs et logging
   # - Helpers de rendu (Turbo Streams, JSON, HTML)
   # - Sécurité (CSRF, validation de signature, sanitisation)
@@ -148,9 +148,10 @@ module UploadDND
       render_error(I18n.t("upload_d_n_d.errors.upload_error"), :internal_server_error)
     end
 
+    # Le détail de l'exception reste dans les logs, jamais dans la réponse.
     def bad_request_error(exception)
       Rails.logger.warn "UploadDND BadRequest: #{exception.message}"
-      render_error(exception.message, :bad_request)
+      render_error(I18n.t("upload_d_n_d.errors.bad_request"), :bad_request)
     end
 
     # === Logging ===
@@ -190,8 +191,14 @@ module UploadDND
 
     # === Helpers d'autorisation ===
 
-    def pundit_enabled?
-      defined?(Pundit) && UploadDND.configuration.authorization_adapter == :pundit
+    # Délègue au port d'autorisation (UploadDND::Authorization) : lève
+    # Denied, RuleMissing ou ConfigurationError. Fail-closed sans adaptateur.
+    def authorize_with_adapter!(subject, action)
+      UploadDND::Authorization.authorize!(self, subject, action)
+    end
+
+    def render_forbidden
+      render_error(I18n.t("upload_d_n_d.errors.unauthorized"), :forbidden)
     end
 
     # === Helpers de session ===

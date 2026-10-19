@@ -12,7 +12,7 @@ RSpec.describe 'Upload Performance',  type: :controller do
   before do
     UploadDND.configure do |config|
       config.require_authentication = false
-      config.authorization_adapter = nil
+      config.authorization_adapter = :none
     end
 
     # Mock session

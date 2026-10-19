@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **Autorisation fail-closed** : la gem n'autorisait que si l'adaptateur valait `:pundit` et que Pundit était chargé. Dans tous les autres cas, uploads et suppressions passaient sans contrôle et sans avertissement : aucune librairie détectée (`nil`), `:cancancan` (détecté mais jamais implémenté), `:pundit` sans Pundit chargé. Côté concern `Controllers::Uploadable`, `attach_file` et `remove_file` sautaient l'autorisation quand le contrôleur n'avait pas de méthode `authorize`. Toute autorisation passe désormais par un port unique (`UploadDND::Authorization`). Sans adaptateur utilisable (`nil`, valeur inconnue), la requête est refusée (403). Un adaptateur déclaré mais inutilisable fait échouer la requête (500, `UploadDND::Authorization::ConfigurationError`)
+- **Messages d'erreur** : `ActionController::BadRequest` et l'échec de détection MIME ne renvoient plus le message de l'exception au client (`upload_d_n_d.errors.bad_request`, `upload_d_n_d.errors.mime_detection_failed` sans `%{message}`). Le détail reste dans les logs
+
+### Added
+- **Adaptateur CanCanCan** (`authorization_adapter = :cancancan`) : `authorize! action, sujet`, avec les sujets génériques `:upload_d_n_d_attachment` et `:upload_d_n_d_temporary_attachment` (voir `docs/AUTHORIZATION.md`). La détection automatique s'appuie désormais sur `CanCan::Ability` : `CanCanCan` n'est pas défini par la gem cancancan
+- **`authorization_adapter = :none`** : désactivation explicite de l'autorisation (seule l'authentification est vérifiée)
+- **Avertissement au démarrage** quand l'autorisation est désactivée (`:none`) ou qu'aucun adaptateur n'est utilisable
+
+### Notes
+- **Migration** :
+  - les apps avec Pundit ou CanCanCan détecté n'ont rien à changer : les policies et l'erreur `Pundit::NotAuthorizedError` relancée par `attach_file` et `remove_file` sont inchangées ;
+  - une app **sans librairie d'autorisation**, ou qui posait `config.authorization_adapter = nil`, voit désormais tous ses uploads refusés : déclarer `config.authorization_adapter = :none` pour retrouver le comportement précédent, ou installer Pundit ;
+  - avec `:none`, `attach_file` et `remove_file` n'appellent plus `authorize`, même si le contrôleur le définit.
+- L'ancienne méthode « autorisation personnalisée » de `docs/AUTHORIZATION.md` (surcharger `authorize_upload_d_n_d_create!` dans l'ApplicationController) n'a jamais été appelée par la gem : elle est retirée de la documentation
+
 ## [0.7.3] - 2026-10-16
 
 Correctif de sécurité (un fichier déjà rattaché ne peut plus être rattaché ailleurs) et purge des fichiers refusés après l'envoi direct. **Mise à jour recommandée.**
