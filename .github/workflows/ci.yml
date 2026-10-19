@@ -41,6 +41,9 @@ jobs:
     env:
       RAILS_ENV: test
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/upload_d_n_d_test
+      # L'hôte n'est pas localhost : levée du garde-fou de DatabaseCleaner,
+      # la base est celle du service ci-dessus.
+      DATABASE_CLEANER_ALLOW_REMOTE_DATABASE_URL: "true"
 
     steps:
       - name: Install packages
