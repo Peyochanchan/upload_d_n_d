@@ -1,0 +1,16 @@
+<%= form_with model: demo_project do |f| %>
+  <%= upload_session_field %>
+
+  <p>
+    <%= f.label :name %>
+    <%= f.text_field :name %>
+  </p>
+
+  <h2>Photos (.jpg, .jpeg, .png, 2 Mo)</h2>
+  <%= upload_field :pictures, record: demo_project %>
+
+  <h2>Documents (.pdf, .xlsx, 20 Mo)</h2>
+  <%= upload_field :documents, record: demo_project %>
+
+  <p><%= f.submit %></p>
+<% end %>
