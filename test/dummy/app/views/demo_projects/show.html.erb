@@ -1,0 +1,17 @@
+<h1><%= @demo_project.name %></h1>
+
+<h2>Photos</h2>
+<ul id="pictures">
+  <% @demo_project.pictures.each do |picture| %>
+    <li><%= picture.filename %> (<%= number_to_human_size(picture.byte_size) %>)</li>
+  <% end %>
+</ul>
+
+<h2>Documents</h2>
+<ul id="documents">
+  <% @demo_project.documents.each do |document| %>
+    <li><%= document.filename %> (<%= number_to_human_size(document.byte_size) %>)</li>
+  <% end %>
+</ul>
+
+<p><%= link_to "Modifier", edit_demo_project_path(@demo_project) %> · <%= link_to "Projets", demo_projects_path %></p>

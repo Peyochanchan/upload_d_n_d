@@ -9,6 +9,12 @@ gem "pg"
 gem "sprockets-rails"
 gem "view_component", "~> 3.0"
 
+# App dummy : chaîne Hotwire d'une app hôte, pour tester le composant dans un
+# navigateur (développement uniquement, hors gemspec)
+gem "importmap-rails"
+gem "stimulus-rails"
+gem "turbo-rails"
+
 # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
 gem "rubocop-rails-omakase", require: false
 

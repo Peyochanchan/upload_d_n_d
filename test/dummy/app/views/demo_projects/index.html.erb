@@ -1,0 +1,7 @@
+<h1>Projets de démonstration</h1>
+<p><%= link_to "Nouveau projet", new_demo_project_path %></p>
+<ul>
+  <% @demo_projects.each do |demo_project| %>
+    <li><%= link_to demo_project.name, demo_project %></li>
+  <% end %>
+</ul>
