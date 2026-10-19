@@ -1,4 +1,4 @@
-class CreateUploadDndTemporaryAttachments < ActiveRecord::Migration[8.1]
+class CreateUploadDndTemporaryAttachments < ActiveRecord::Migration[7.2]
   def change
     create_table :upload_d_n_d_temporary_attachments do |t|
       t.string :session_id, null: false

@@ -17,6 +17,7 @@ gem "turbo-rails"
 
 # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
 gem "rubocop-rails-omakase", require: false
+gem "bundler-audit", require: false
 
 group :development, :test do
   # RSpec for testing
