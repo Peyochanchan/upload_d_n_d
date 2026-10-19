@@ -9,9 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 - **Autorisation fail-closed** : la gem n'autorisait que si l'adaptateur valait `:pundit` et que Pundit était chargé. Dans tous les autres cas, uploads et suppressions passaient sans contrôle et sans avertissement : aucune librairie détectée (`nil`), `:cancancan` (détecté mais jamais implémenté), `:pundit` sans Pundit chargé. Côté concern `Controllers::Uploadable`, `attach_file` et `remove_file` sautaient l'autorisation quand le contrôleur n'avait pas de méthode `authorize`. Toute autorisation passe désormais par un port unique (`UploadDND::Authorization`). Sans adaptateur utilisable (`nil`, valeur inconnue), la requête est refusée (403). Un adaptateur déclaré mais inutilisable fait échouer la requête (500, `UploadDND::Authorization::ConfigurationError`)
-- **Messages d'erreur** : `ActionController::BadRequest` et l'échec de détection MIME ne renvoient plus le message de l'exception au client (`upload_d_n_d.errors.bad_request`, `upload_d_n_d.errors.mime_detection_failed` sans `%{message}`). Le détail reste dans les logs
+- **Limites d'un champ appliquées au dépôt** : `POST /upload_d_n_d/attachments` et `Controllers::Uploadable#attach_file` n'appliquaient aucune limite de taille ni de type (seule la validation du modèle, à l'enregistrement, protégeait), et `POST /upload_d_n_d/temporary_attachments` n'appliquait que les limites globales. Le transfert des fichiers temporaires vers le record (`Uploadable#attach_temporary_uploads`, `TemporaryAttachment.attach_to_record`) ne validait rien : un fichier hors limites du champ y était attaché. Les limites du champ (`uploadable`) sont désormais vérifiées au dépôt sur les trois points d'entrée, et de nouveau au transfert (fichier écarté et journalisé). Un fichier refusé est purgé
+- **Messages d'erreur** : `ActionController::BadRequest` et l'échec de détection MIME (contrôleur et `FileValidator`) ne renvoient plus le message de l'exception au client (`upload_d_n_d.errors.bad_request`, `upload_d_n_d.errors.mime_detection_failed` sans `%{message}`). Le détail reste dans les logs
+
+### Fixed
+- **Limites différentes entre navigateur et serveur** : sur un formulaire de création, le composant affichait les limites du modèle quand le serveur appliquait les limites globales. Un fichier accepté par le navigateur pouvait être refusé au dépôt (champ plus large que la configuration globale), ou l'inverse. Le composant et les contrôleurs partagent désormais les mêmes limites (`UploadDND::FieldConstraints`)
+- **Fichiers `.jpeg` refusés par le navigateur** sur un champ déclaré `accept: [:jpg, :jpeg]` : seule la première extension d'un type MIME était proposée (`.jpg`). Toutes les extensions connues sont désormais listées
 
 ### Added
+- **Référence de champ signée** (`field_ref`) émise par le composant et renvoyée au dépôt : le serveur en déduit le modèle et l'attribut, et applique leurs limites. Sans référence (ancien client, appel direct), les limites globales restent appliquées
 - **Adaptateur CanCanCan** (`authorization_adapter = :cancancan`) : `authorize! action, sujet`, avec les sujets génériques `:upload_d_n_d_attachment` et `:upload_d_n_d_temporary_attachment` (voir `docs/AUTHORIZATION.md`). La détection automatique s'appuie désormais sur `CanCan::Ability` : `CanCanCan` n'est pas défini par la gem cancancan
 - **`authorization_adapter = :none`** : désactivation explicite de l'autorisation (seule l'authentification est vérifiée)
 - **Avertissement au démarrage** quand l'autorisation est désactivée (`:none`) ou qu'aucun adaptateur n'est utilisable
@@ -21,6 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - les apps avec Pundit ou CanCanCan détecté n'ont rien à changer : les policies et l'erreur `Pundit::NotAuthorizedError` relancée par `attach_file` et `remove_file` sont inchangées ;
   - une app **sans librairie d'autorisation**, ou qui posait `config.authorization_adapter = nil`, voit désormais tous ses uploads refusés : déclarer `config.authorization_adapter = :none` pour retrouver le comportement précédent, ou installer Pundit ;
   - avec `:none`, `attach_file` et `remove_file` n'appellent plus `authorize`, même si le contrôleur le définit.
+- **Migration (limites des champs)** :
+  - un fichier hors limites du champ est désormais refusé dès le dépôt (422) au lieu de l'être à l'enregistrement du formulaire ;
+  - sur un record existant, un champ sans `uploadable` reçoit les limites globales au dépôt (`config.max_size`, `config.accepted_types`), qui n'y étaient pas appliquées ;
+  - sur un formulaire de création, passer `record:` (un record neuf) à `upload_field` pour que les limites du modèle s'appliquent ; sans `record:`, ce sont les limites globales ;
+  - `accepted_types:` et `max_size:` passés à `upload_field` ne changent que l'affichage : une valeur plus large que le modèle est refusée par le serveur ;
+  - les apps qui appellent les endpoints sans passer par le composant gardent les limites globales sur les fichiers temporaires.
 - L'ancienne méthode « autorisation personnalisée » de `docs/AUTHORIZATION.md` (surcharger `authorize_upload_d_n_d_create!` dans l'ApplicationController) n'a jamais été appelée par la gem : elle est retirée de la documentation
 
 ## [0.7.3] - 2026-10-16

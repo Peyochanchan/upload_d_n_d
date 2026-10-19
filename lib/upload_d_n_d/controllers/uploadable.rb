@@ -108,6 +108,13 @@ module UploadDND
         return
       end
 
+      constraints = UploadDND::FieldConstraints.for(record.class, attribute_name)
+      if blob && (violation = constraints.violation(blob))
+        discard_rejected_upload_blob(blob, authorized)
+        render_attach_file_error(constraints.error_message(violation))
+        return
+      end
+
       attachment.attach(blob)
 
       if record.save

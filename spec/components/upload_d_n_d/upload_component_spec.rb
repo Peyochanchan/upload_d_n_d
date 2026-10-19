@@ -342,6 +342,40 @@ RSpec.describe UploadDND::UploadComponent, type: :component do
     end
   end
 
+  # A2 : le composant applique exactement les limites du serveur.
+  describe "limits shared with the server" do
+    LimitedUser.uploadable_attributes.each_key do |attribute|
+      it "matches the server limits for LimitedUser##{attribute}" do
+        component = described_class.new(attribute_name: attribute, record: LimitedUser.new)
+        server = UploadDND::FieldConstraints.for(LimitedUser, attribute)
+
+        expect(component.max_size).to eq(server.max_size)
+        expect(component.accepted_types).to eq(server.accepted_extensions)
+        expect(component.accepted_mime_types.split(",")).to eq(server.content_types)
+        expect(UploadDND::FieldReference.constraints(component.field_ref, attribute)).to eq(server)
+      end
+    end
+
+    it "accepts both .jpg and .jpeg for image/jpeg" do
+      component = described_class.new(attribute_name: :documents, record: LimitedUser.new)
+
+      expect(component.accepted_types.split(",")).to include(".jpg", ".jpeg")
+    end
+
+    it "renders the field reference and the MIME types for the browser" do
+      container = render_inline(described_class.new(attribute_name: :avatar, record: LimitedUser.new)).at_css(".udnd-container")
+      expect(container["data-upload-d-n-d--uploads-field-ref-value"]).to be_present
+      expect(container["data-upload-d-n-d--uploads-mime-types-value"]).to eq("image/png")
+    end
+
+    it "emits no field reference without a record (global limits)" do
+      component = described_class.new(attribute_name: :documents)
+
+      expect(component.field_ref).to be_nil
+      expect(component.max_size).to eq(UploadDND.configuration.max_size)
+    end
+  end
+
   describe "rendering" do
     let(:component) { described_class.new(attribute_name: :avatar, record: user) }
 

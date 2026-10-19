@@ -88,10 +88,12 @@ module UploadDND
         )
       end
     rescue StandardError => e
+      # Le détail reste dans les logs : le message d'erreur est affiché.
+      Rails.logger.warn "UploadDND: MIME detection failed - #{e.class}: #{e.message}"
       record.errors.add(
         attribute,
         :mime_type_detection_failed,
-        message: "Impossible de vérifier le type de fichier : #{e.message}"
+        message: I18n.t("upload_d_n_d.errors.mime_detection_failed")
       )
     end
   end

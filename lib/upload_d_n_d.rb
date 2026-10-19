@@ -22,6 +22,8 @@ module UploadDND
 end
 
 require "upload_d_n_d/authorization"
+require "upload_d_n_d/field_constraints"
+require "upload_d_n_d/field_reference"
 
 module UploadDND
   # Autoload des concerns, helpers et autres composants

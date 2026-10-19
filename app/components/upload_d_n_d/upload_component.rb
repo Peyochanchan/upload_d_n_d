@@ -27,8 +27,28 @@ module UploadDND
         multiple
       end
 
-      @accepted_types = accepted_types || model_config[:accepted_types] || UploadDND.configuration.accepted_types
-      @max_size = max_size || model_config[:max_size] || UploadDND.configuration.max_size
+      # Limites du champ, identiques à celles appliquées par le serveur.
+      # accepted_types: et max_size: ne changent que l'affichage : le serveur
+      # applique toujours les limites du modèle.
+      @constraints = field_constraints
+      @accepted_types = accepted_types || @constraints.accepted_extensions
+      @max_size = max_size || @constraints.max_size
+    end
+
+    # Types MIME acceptés, pour le contrôle du navigateur
+    def accepted_mime_types
+      return @constraints.content_types.join(",") if @accepted_types == @constraints.accepted_extensions
+
+      UploadDND::MimeTypes.from_accepted_types(@accepted_types).join(",")
+    end
+
+    # Référence signée du champ, renvoyée au dépôt : le serveur en déduit les
+    # limites du modèle. nil sans record (limites globales).
+    def field_ref
+      return unless record && record.class.respond_to?(:reflect_on_attachment)
+      return unless record.class.reflect_on_attachment(attribute_name)
+
+      UploadDND::FieldReference.generate(record.class, attribute_name)
     end
 
     def model_name
@@ -96,31 +116,16 @@ module UploadDND
 
     private
 
+    def field_constraints
+      return UploadDND::FieldConstraints.global unless record
+
+      UploadDND::FieldConstraints.for(record.class, attribute_name)
+    end
+
     def get_uploadable_config
-      return {} unless record
+      return {} unless record&.class.respond_to?(:uploadable_attributes)
 
-      # Récupère la classe du modèle (gère les namespaces)
-      model_class = record.class
-
-      # Vérifie si le modèle a la méthode uploadable_attributes
-      return {} unless model_class.respond_to?(:uploadable_attributes)
-
-      # Récupère la config pour cet attribut spécifique
-      config = model_class.uploadable_attributes[attribute_name.to_sym]
-      return {} unless config
-
-      # Convertit les MIME types en extensions pour l'affichage
-      accepted_types_string = if config[:content_type]
-        mime_types_to_extensions(config[:content_type])
-      else
-        nil
-      end
-
-      {
-        accepted_types: accepted_types_string,
-        max_size: config[:max_size],
-        multiple: config[:multiple]
-      }
+      record.class.uploadable_attributes[attribute_name.to_sym] || {}
     end
 
     # Détecte automatiquement si l'attachment est has_one ou has_many
@@ -132,10 +137,6 @@ module UploadDND
       # has_many_attached retourne une collection qui respond_to :attach
       # has_one_attached retourne un objet qui ne respond_to pas :each
       attachment.is_a?(ActiveStorage::Attached::Many)
-    end
-
-    def mime_types_to_extensions(mime_types)
-      UploadDND::MimeTypes.to_extensions(mime_types)
     end
 
     def get_attachments

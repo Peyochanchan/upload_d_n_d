@@ -17,6 +17,7 @@ fr:
       suspicious_type: "Le type réel du fichier ne correspond pas au type déclaré"
       mime_detection_failed: "Impossible de vérifier le type de fichier."
       bad_request: "Requête invalide."
+      invalid_field_reference: "Champ de fichier invalide. Rechargez la page."
       max_files_exceeded: "Vous ne pouvez pas ajouter plus de %{max} fichiers"
       file_not_found_or_denied: "Fichier non trouvé ou accès refusé"
       save_failed: "Erreur lors de l'enregistrement : %{errors}"

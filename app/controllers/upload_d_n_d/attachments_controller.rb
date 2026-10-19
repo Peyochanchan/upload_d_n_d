@@ -66,6 +66,14 @@ module UploadDND
         return
       end
 
+      # Limites du champ, lues sur le modèle du record (vérifiées avant toute
+      # écriture ; le blob refusé est purgé).
+      constraints = UploadDND::FieldConstraints.for(record.class, attribute_name)
+      if (violation = constraints.violation(@blob))
+        render_error(constraints.error_message(violation), :unprocessable_entity)
+        return
+      end
+
       # Sanitize filename avant l'attachement
       @blob.update(filename: sanitize_filename(@blob.filename.to_s))
 

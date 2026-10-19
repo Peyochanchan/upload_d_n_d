@@ -313,6 +313,21 @@ RSpec.describe UploadableTestController, type: :controller do
           ActiveStorage::Blob.exists?(blob.id)
         end
 
+        # A2 : limites du champ appliquées avant l'attachement.
+        it 'refuses a file over the field limits (422) and purges it' do
+          limited = LimitedUser.create!(name: 'Limited', email: 'limited@example.com')
+          controller.instance_variable_set(:@user, limited)
+          too_large = ActiveStorage::Blob.create_and_upload!(io: StringIO.new("x" * 11), filename: 'x.png', content_type: 'image/png', identify: false)
+
+          perform_enqueued_jobs do
+            post :attach_file, params: { signed_blob_id: too_large.signed_id, attribute_name: 'avatar' }, format: :json
+          end
+
+          expect(response).to have_http_status(:unprocessable_entity)
+          expect(limited.reload.avatar).not_to be_attached
+          expect(ActiveStorage::Blob.exists?(too_large.id)).to be false
+        end
+
         it 'purges the blob when the save fails (422)' do
           allow_any_instance_of(User).to receive(:save).and_return(false)
           allow_any_instance_of(User).to receive(:errors).and_return(double(full_messages: [ 'Email is invalid' ]))

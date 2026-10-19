@@ -84,7 +84,7 @@ module UploadDND
         end
 
         blob_attachment = temp_attachment.blob_attachment
-        unless blob_attachment
+        if blob_attachment.nil? || temp_attachment.violates_constraints_of?(self, attribute_name)
           temp_attachment.destroy
           next
         end
