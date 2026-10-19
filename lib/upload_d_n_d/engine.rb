@@ -35,10 +35,15 @@ module UploadDND
 
       # CSS : rend upload_d_n_d/application.css disponible via stylesheet_link_tag
       app.config.assets.paths << root.join("app/assets/stylesheets")
+    end
 
-      # Importmap : pin automatique des controllers Stimulus
+    # Importmap : pins de la gem (upload_d_n_d, controllers Stimulus), lus par
+    # importmap-rails avec ceux de l'app. Avant son initializer, qui dessine
+    # config.importmap.paths.
+    initializer "upload_d_n_d.importmap", before: "importmap" do |app|
       if app.config.respond_to?(:importmap)
-        app.config.importmap.draw(root.join("config/importmap.rb"))
+        app.config.importmap.paths << root.join("config/importmap.rb")
+        app.config.importmap.cache_sweepers << root.join("app/javascript")
       end
     end
   end

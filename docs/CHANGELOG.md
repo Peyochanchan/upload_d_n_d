@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **Limites différentes entre navigateur et serveur** : sur un formulaire de création, le composant affichait les limites du modèle quand le serveur appliquait les limites globales. Un fichier accepté par le navigateur pouvait être refusé au dépôt (champ plus large que la configuration globale), ou l'inverse. Le composant et les contrôleurs partagent désormais les mêmes limites (`UploadDND::FieldConstraints`)
+- **Intégration importmap inopérante** : le moteur appelait `config.importmap.draw`, qui n'existe pas (`config.importmap` est un `OrderedOptions`, l'appel ne faisait rien). Une app sous importmap-rails n'obtenait aucun pin `upload_d_n_d` (`Failed to resolve module specifier "upload_d_n_d"`). Le moteur ajoute désormais son `config/importmap.rb` à `config.importmap.paths`. Avec Sprockets, le JS de la gem est aussi déclaré dans `upload_d_n_d_manifest.js` (sans quoi `AssetNotPrecompiledError`). Les apps qui chargent le JS par un bundler ne sont pas concernées
 - **Fichiers `.jpeg` refusés par le navigateur** sur un champ déclaré `accept: [:jpg, :jpeg]` : seule la première extension d'un type MIME était proposée (`.jpg`). Toutes les extensions connues sont désormais listées
 
 ### Added
