@@ -306,6 +306,37 @@ RSpec.describe UploadableTestController, type: :controller do
         expect(JSON.parse(response.body)['error']).to include('Email is invalid')
       end
 
+      # Sur un échec en Turbo Stream, la réponse doit porter un statut d'erreur
+      # (comme la variante JSON) : sinon le client ne distingue pas l'échec du
+      # succès. Auparavant : 200.
+      context 'with turbo_stream format' do
+        it 'returns 422 when the save fails' do
+          allow_any_instance_of(User).to receive(:save).and_return(false)
+          allow_any_instance_of(User).to receive(:errors).and_return(double(full_messages: [ 'Email is invalid' ]))
+
+          post :attach_file, params: { signed_blob_id: blob.signed_id, attribute_name: 'avatar' }, format: :turbo_stream
+
+          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+        end
+
+        it 'returns 422 on an ActiveStorage integrity error' do
+          allow_any_instance_of(User).to receive(:save).and_raise(ActiveStorage::IntegrityError)
+
+          post :attach_file, params: { signed_blob_id: blob.signed_id, attribute_name: 'avatar' }, format: :turbo_stream
+
+          expect(response).to have_http_status(:unprocessable_entity)
+        end
+
+        it 'returns 422 on an ActiveStorage unrepresentable error' do
+          allow_any_instance_of(User).to receive(:save).and_raise(ActiveStorage::UnrepresentableError)
+
+          post :attach_file, params: { signed_blob_id: blob.signed_id, attribute_name: 'avatar' }, format: :turbo_stream
+
+          expect(response).to have_http_status(:unprocessable_entity)
+        end
+      end
+
       context 'purge of rejected blobs' do
         include ActiveJob::TestHelper
 
@@ -491,6 +522,19 @@ RSpec.describe UploadableTestController, type: :controller do
         }, format: :json
 
         expect(response).to have_http_status(:not_found)
+      end
+    end
+
+    # Même exigence qu'attach_file : un échec en Turbo Stream porte un statut
+    # d'erreur. Auparavant : 200.
+    context 'with turbo_stream format' do
+      it 'returns 404 when the attachment does not match the record' do
+        attachment = user.avatar.attachment
+
+        delete :remove_file, params: { file_id: attachment.id, attribute_name: 'documents' }, format: :turbo_stream
+
+        expect(response).to have_http_status(:not_found)
+        expect(response.media_type).to eq('text/vnd.turbo-stream.html')
       end
     end
   end
