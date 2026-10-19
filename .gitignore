@@ -3,6 +3,7 @@
 /log/*.log
 /pkg/
 /tmp/
+/node_modules/
 /test/dummy/db/*.sqlite3
 /test/dummy/db/*.sqlite3-*
 /test/dummy/log/*.log
@@ -17,3 +18,7 @@
 
 # Version tracking file (créé dans les apps clientes)
 .upload_d_n_d_version
+
+# Outils locaux
+/.ruby-lsp/
+/.claude/

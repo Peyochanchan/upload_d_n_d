@@ -1,6 +1,6 @@
 {
     "name": "upload_d_n_d",
-    "version": "0.1.0",
+    "version": "0.8.0",
     "type": "module",
     "main": "app/javascript/upload_d_n_d/index.js",
     "exports": {
