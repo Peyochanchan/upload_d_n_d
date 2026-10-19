@@ -29,6 +29,16 @@ UploadDND.configure do |config|
   # nil désactive la purge des fichiers refusés.
   # config.rejected_blob_purge_window = 1.hour
 
+  # Nettoyage des blobs orphelins (opt-in : UploadDND::PurgeOrphanBlobsJob ou
+  # la tâche rake upload_d_n_d:purge_orphans). PostgreSQL requis.
+  # config.orphan_blob_min_age = 2.days
+  # Limite le scan des citations aux colonnes de texte riche (borne la mémoire).
+  # Sans liste, toutes les colonnes texte/JSON sont scannées.
+  # config.orphan_scan_columns = ["projects.description", "pages.body_translations"]
+  # Motifs d'adresse supplémentaires (hôte/bucket du service de stockage).
+  # config.orphan_scan_patterns = ["%votre-bucket.example.com%"]
+  # config.orphan_scan_excluded_tables = []
+
   # Autorisation : :pundit ou :cancancan (détection automatique), ou :none
   # pour s'en passer. Sans adaptateur utilisable, tout est refusé (403).
   # config.authorization_adapter = :pundit # ou :cancancan, ou :none

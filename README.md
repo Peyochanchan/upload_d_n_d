@@ -631,9 +631,11 @@ ces garde-fous :
 - seul un fichier envoyé récemment est purgé (`config.rejected_blob_purge_window`, 1 heure par défaut ; `nil` désactive la purge) ;
 - rien n'est supprimé si l'autorisation n'a pas été explicitement accordée (refus 401 ou 403, ou autorisation qui n'aboutit pas).
 
-Pensez aussi au job de nettoyage des blobs orphelins (blobs créés par
-DirectUpload mais jamais attachés) : `ActiveStorage::Blob.unattached` +
-`purge_later` en tâche planifiée.
+Pensez aussi au nettoyage des **blobs orphelins** — créés par DirectUpload mais
+jamais rattachés (refus, coupure réseau, onglet fermé). N'utilisez pas
+`ActiveStorage::Blob.unattached.purge_later` tel quel : sans garde-fou, il
+supprime des envois en cours et des fichiers cités dans du HTML stocké hors
+Action Text. La gem fournit un nettoyage sûr : voir « Blobs orphelins » ci-dessous.
 
 ## Nettoyage automatique
 
@@ -675,6 +677,63 @@ cleanup_temporary_uploads:
   cron: "0 2 * * *"
   class: "UploadDND::CleanupTemporaryAttachmentsJob"
 ```
+
+### Blobs orphelins
+
+Un blob envoyé par DirectUpload mais jamais rattaché (refus, coupure réseau,
+onglet fermé, image retirée d'un éditeur) n'est pas un fichier temporaire : le
+job ci-dessus ne le voit pas. La gem fournit un nettoyage dédié, **opt-in**.
+
+Un blob n'est supprimé que si, cumulativement : aucun rattachement (record,
+variante, Action Text) ; créé depuis plus de `orphan_blob_min_age` (2 jours par
+défaut) ; non gardé par un fichier temporaire ; et **non cité dans un texte de la
+base** — colonnes texte et JSON — par la clé du bucket, par le `signed_id`, ou
+par un fichier inséré avec l'éditeur (sgid). Le nom de fichier n'est jamais
+utilisé.
+
+Aperçu sans rien supprimer, puis suppression explicite :
+
+```bash
+bin/rails upload_d_n_d:purge_orphans            # simulation (rapport)
+APPLY=1 bin/rails upload_d_n_d:purge_orphans    # suppression
+```
+
+Récurrence via `UploadDND::PurgeOrphanBlobsJob`. Par défaut il **journalise un
+rapport sans supprimer** ; passez `apply: true` pour supprimer :
+
+```yaml
+# config/recurring.yml (solid_queue)
+production:
+  purge_orphan_blobs:
+    class: UploadDND::PurgeOrphanBlobsJob
+    args: [{ "apply": true }]
+    schedule: every sunday at 3am
+```
+
+Réglages (initializer) :
+
+```ruby
+UploadDND.configure do |config|
+  # Âge minimal avant qu'un blob sans rattachement soit candidat
+  # config.orphan_blob_min_age = 2.days
+
+  # Limite le scan des citations aux colonnes de texte riche de l'app
+  # (borne la mémoire sur une grosse base). Sans liste, toutes les colonnes
+  # texte/JSON sont scannées.
+  # config.orphan_scan_columns = ["projects.description", "pages.body_translations"]
+
+  # Motifs d'adresse supplémentaires pour protéger les citations par URL
+  # directe du bucket (image collée au lieu d'être insérée).
+  # config.orphan_scan_patterns = ["%votre-bucket.example.com%"]
+
+  # Tables à exclure du scan, en plus des tables système
+  # config.orphan_scan_excluded_tables = ["gros_logs"]
+end
+```
+
+> **PostgreSQL requis** pour le scan des citations (il repose sur `CAST ... AS
+> text` et `ILIKE`). Sur un autre SGBD, le job lève une erreur explicite plutôt
+> que de supprimer sans ce filet de sécurité.
 
 ## Customisation du style
 

@@ -10,6 +10,10 @@ module UploadDND
                   :require_authentication,
                   :temporary_files_retention,
                   :rejected_blob_purge_window,
+                  :orphan_blob_min_age,
+                  :orphan_scan_columns,
+                  :orphan_scan_patterns,
+                  :orphan_scan_excluded_tables,
                   :authorization_adapter,
                   :validator_class,
                   :active_storage_service,
@@ -34,6 +38,17 @@ module UploadDND
       # (envoi en cours) : un blob plus ancien peut être cité dans un HTML
       # stocké. nil désactive la purge des blobs refusés.
       @rejected_blob_purge_window = 1.hour
+      # Nettoyage des blobs orphelins (opt-in via UploadDND::PurgeOrphanBlobsJob
+      # ou la tâche rake upload_d_n_d:purge_orphans) :
+      # - âge minimal avant qu'un blob sans rattachement soit candidat ;
+      # - liste blanche des colonnes à scanner ("table.colonne"), nil = toutes
+      #   les colonnes texte/JSON (borne la mémoire sur une grosse base) ;
+      # - motifs LIKE supplémentaires (hôte/bucket du service de stockage) ;
+      # - tables à exclure en plus des tables système.
+      @orphan_blob_min_age = 2.days
+      @orphan_scan_columns = nil
+      @orphan_scan_patterns = nil
+      @orphan_scan_excluded_tables = []
       @authorization_adapter = detect_authorization_adapter
       @validator_class = "FileValidator"
       @active_storage_service = nil # Utilise le service par défaut de Rails
