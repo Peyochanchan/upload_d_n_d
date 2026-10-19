@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`view_component` déclaré en dépendance d'exécution** (`>= 3.0`) : `UploadComponent` en hérite, la dépendance était jusqu'ici implicite. Sans effet pour une app qui l'a déjà (dont l'app hôte)
 
 ### Changed
+- **CI matricielle** : la CI teste désormais la plage de Rails déclarée (Ruby 3.2/3.3/3.4 × Rails 7.2/8.0/8.1, en diagonale plus un croisé), avec service PostgreSQL, et ajoute `bundler-audit` (audit des CVE). Dépendances de développement mises à jour pour les correctifs de sécurité (Rails 8.1.4, view_component 3.27, puma 8.0.2) — sans effet pour les apps, qui résolvent leur propre lock
 - **Gemspec** : borne Rails `>= 7.2.3, < 8.2` (seul Rails 8.1 est testé) ; URL GitHub retirées des métadonnées (dépôt privé, publication non tranchée) ; e-mail de contact mis à jour ; dépendance de dev `rack-attack` retirée (le rate limiting s'appuie sur `Rails.cache`, pas sur rack-attack)
 - **La gem embarque désormais son CHANGELOG** (`docs/CHANGELOG.md` ajouté à la liste de fichiers publiée). Nettoyage du dépôt : `node_modules/` n'est plus suivi, le squelette Minitest inutilisé est retiré (la suite est RSpec), `package.json` passe en 0.8.0
 

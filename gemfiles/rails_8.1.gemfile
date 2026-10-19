@@ -1,0 +1,8 @@
+# frozen_string_literal: true
+
+# Matrice CI : Rails 8.1. Réutilise le Gemfile racine, épingle Rails.
+eval_gemfile File.expand_path("../Gemfile", __dir__)
+
+gem "rails", "~> 8.1.0"
+# json 3.x a retiré quirks_mode, que l'ActiveSupport de Rails < 8.1 utilise encore.
+gem "json", "< 3"
