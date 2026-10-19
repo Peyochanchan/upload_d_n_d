@@ -11,7 +11,8 @@ module UploadDND
         respond_to do |format|
           format.turbo_stream do
             flash[:alert] = I18n.t("upload_d_n_d.errors.corrupted")
-            render turbo_stream: turbo_stream.replace("flash_messages", partial: "shared/flashes")
+            render turbo_stream: turbo_stream.replace("flash_messages", partial: "shared/flashes"),
+                   status: :unprocessable_entity
           end
           format.json { render json: { error: I18n.t("upload_d_n_d.errors.corrupted") }, status: :unprocessable_entity }
         end
@@ -21,7 +22,8 @@ module UploadDND
         respond_to do |format|
           format.turbo_stream do
             flash[:alert] = I18n.t("upload_d_n_d.errors.unrepresentable")
-            render turbo_stream: turbo_stream.replace("flash_messages", partial: "shared/flashes")
+            render turbo_stream: turbo_stream.replace("flash_messages", partial: "shared/flashes"),
+                   status: :unprocessable_entity
           end
           format.json { render json: { error: I18n.t("upload_d_n_d.errors.unrepresentable") }, status: :unprocessable_entity }
         end
@@ -137,7 +139,8 @@ module UploadDND
         respond_to do |format|
           format.turbo_stream do
             flash.now[:alert] = I18n.t("upload_d_n_d.errors.save_failed", errors: record.errors.full_messages.join(", "))
-            render turbo_stream: turbo_stream.replace("flash_messages", partial: "shared/flashes")
+            render turbo_stream: turbo_stream.replace("flash_messages", partial: "shared/flashes"),
+                   status: :unprocessable_entity
           end
           format.json { render json: { error: record.errors.full_messages }, status: :unprocessable_entity }
         end
@@ -194,7 +197,8 @@ module UploadDND
         respond_to do |format|
           format.turbo_stream do
             flash.now[:alert] = I18n.t("upload_d_n_d.errors.file_not_found_or_denied")
-            render turbo_stream: turbo_stream.replace("flash_messages", partial: "shared/flashes")
+            render turbo_stream: turbo_stream.replace("flash_messages", partial: "shared/flashes"),
+                   status: :not_found
           end
           format.json { render json: { error: I18n.t("upload_d_n_d.errors.blob_not_found") }, status: :not_found }
         end
