@@ -61,7 +61,7 @@ module UploadDND
           end
 
           blob_attachment = temp_attachment.blob_attachment
-          unless blob_attachment
+          if blob_attachment.nil? || temp_attachment.violates_constraints_of?(record, target_attr)
             temp_attachment.destroy
             next
           end
@@ -83,6 +83,18 @@ module UploadDND
     end
 
     # Méthodes d'instance
+
+    # Le transfert vers le record ne passe pas par la validation du modèle :
+    # les limites du champ cible sont vérifiées ici. Couvre aussi un dépôt
+    # fait sans référence de champ (limites globales seulement).
+    def violates_constraints_of?(record, attribute_name)
+      violation = UploadDND::FieldConstraints.for(record.class, attribute_name).violation(blob.blob)
+      return false unless violation
+
+      Rails.logger.warn "UploadDND: temporary file #{id} refused on transfer to " \
+                        "#{record.class}##{attribute_name} - #{violation}"
+      true
+    end
     def filename
       blob.blob.filename.to_s if blob.attached?
     end

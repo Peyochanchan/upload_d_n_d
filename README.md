@@ -263,6 +263,23 @@ end
                  max_size: 10.megabytes %>
 ```
 
+#### Limites d'un champ : le modèle fait foi
+
+Les limites déclarées par `uploadable` (`accept:`, `max_size:`,
+`strict_mime_check:`) sont appliquées à l'identique par le navigateur et par le
+serveur, dès le dépôt du fichier ; une limite que le modèle ne déclare pas
+retombe sur la configuration globale. Un fichier refusé n'est pas conservé.
+
+- Avec un `record:` (persisté ou non), le composant transmet une référence
+  signée du champ : le serveur applique les limites du modèle.
+- Sans `record:`, ce sont les limites globales. Pour un formulaire de création,
+  passez donc un record neuf (`record: User.new`) plutôt que rien.
+- `accepted_types:` et `max_size:` sur `upload_field` ne changent que
+  l'affichage et le contrôle du navigateur : le serveur applique toujours les
+  limites du modèle. Une valeur plus large que le modèle est refusée au dépôt.
+- Les fichiers temporaires sont revérifiés au transfert vers le record : un
+  fichier hors limites du champ cible est écarté (et journalisé).
+
 #### Upload temporaire (nouveau record)
 
 Pour les formulaires de création, utilisez upload temporaire :
@@ -274,8 +291,8 @@ Pour les formulaires de création, utilisez upload temporaire :
 
   <%= f.text_field :name %>
 
-  <%# Pas de record, les fichiers seront stockés temporairement %>
-  <%= upload_field :avatar, accepted_types: '.png,.jpg' %>
+  <%# Record neuf : fichiers stockés temporairement, limites du modèle %>
+  <%= upload_field :avatar, record: @user %>
 
   <%= f.submit %>
 <% end %>

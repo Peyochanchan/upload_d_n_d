@@ -314,9 +314,9 @@ RSpec.describe UploadDND::FileValidator do
       record.avatar.attach(image_blob)
 
       expect(record).not_to be_valid
-      expect(record.errors[:avatar]).to include(
-        "Impossible de vérifier le type de fichier : boom"
-      )
+      expect(record.errors[:avatar]).to include(I18n.t("upload_d_n_d.errors.mime_detection_failed"))
+      # Le détail de l'exception reste dans les logs.
+      expect(record.errors[:avatar].join).not_to include("boom")
     end
   end
 

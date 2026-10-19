@@ -11,6 +11,8 @@ export default class extends Controller {
     multiple: Boolean,
     maxSize: Number,
     acceptedTypes: String,
+    mimeTypes: String,
+    fieldRef: String,
     i18n: Object
   }
 
@@ -105,7 +107,11 @@ export default class extends Controller {
     // Validation du MIME type (sécurité supplémentaire)
     // Note: file.type peut être trompé mais c'est une première barrière
     if (file.type && this.hasAcceptedMimeTypesValue) {
-      const acceptedMimes = this.getAcceptedMimeTypes(this.acceptedTypesValue)
+      // mimeTypes : types calculés par le serveur (pas hasMimeTypesValue,
+      // l'attribut est toujours rendu, éventuellement vide)
+      const acceptedMimes = this.mimeTypesValue
+        ? this.mimeTypesValue.split(',').map(m => m.trim())
+        : this.getAcceptedMimeTypes(this.acceptedTypesValue)
       if (!acceptedMimes.includes(file.type)) {
         const msg = this.i18nValue.alerts.suspiciousType
         this.showAlert(msg.title, msg.text, "error")
@@ -116,6 +122,7 @@ export default class extends Controller {
     return true
   }
 
+  // Repli si le serveur n'a pas fourni les types MIME (ancien rendu)
   // Mapping extensions → MIME types communs
   getAcceptedMimeTypes(extensions) {
     const mimeMap = {
@@ -149,6 +156,11 @@ export default class extends Controller {
       signed_blob_id: blob.signed_id,
       attribute_name: this.attributeNameValue,
       multiple: this.multipleValue
+    }
+
+    // Référence signée du champ : le serveur applique les limites du modèle
+    if (this.fieldRefValue) {
+      payload.field_ref = this.fieldRefValue
     }
 
     // Si on a un record existant, on passe son GlobalID

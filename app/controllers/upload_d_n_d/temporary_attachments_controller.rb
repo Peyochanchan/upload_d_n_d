@@ -159,78 +159,27 @@ module UploadDND
       Rails.logger.info "UploadDND: Temporary file deleted - #{@temp_attachment.attribute_name} by #{current_user&.id || 'anonymous'}"
     end
 
+    # Limites du champ visé : celles du modèle si le composant a fourni sa
+    # référence signée (field_ref), sinon la configuration globale (ancien
+    # client, appel direct).
     def validate_blob_constraints
       return unless @blob
 
-      max_size = UploadDND.configuration.max_size
-      if max_size.present? && @blob.byte_size > max_size
-        render_error(
-          I18n.t(
-            "upload_d_n_d.errors.too_large",
-            max_size: ActiveSupport::NumberHelper.number_to_human_size(max_size)
-          ),
-          :unprocessable_entity
-        )
-        return
-      end
+      constraints = field_constraints
+      return if performed?
 
-      accepted_types = normalized_accepted_types
-      if accepted_types.present? && !accepted_types.include?(@blob.content_type)
-        render_error(
-          I18n.t(
-            "upload_d_n_d.errors.invalid_type",
-            types: UploadDND.configuration.accepted_types
-          ),
-          :unprocessable_entity
-        )
-        return
-      end
-
-      return unless UploadDND.configuration.strict_mime_check
-      return if accepted_types.blank?
-
-      detected_content_type = Marcel::MimeType.for(
-        @blob.download,
-        name: @blob.filename.to_s
-      )
-
-      if detected_content_type.present? && !accepted_types.include?(detected_content_type)
-        render_error(
-          I18n.t(
-            "upload_d_n_d.errors.invalid_type",
-            types: UploadDND.configuration.accepted_types
-          ),
-          :unprocessable_entity
-        )
-        return
-      end
-
-      if detected_content_type.present? && detected_content_type != @blob.content_type
-        render_error(
-          I18n.t("upload_d_n_d.errors.suspicious_type"),
-          :unprocessable_entity
-        )
-        nil
-      end
-    rescue StandardError => e
-      # Le détail reste dans les logs, jamais dans la réponse.
-      Rails.logger.warn "UploadDND: MIME detection failed - #{e.class}: #{e.message}"
-      render_error(I18n.t("upload_d_n_d.errors.mime_detection_failed"), :unprocessable_entity)
+      violation = constraints.violation(@blob)
+      render_error(constraints.error_message(violation), :unprocessable_entity) if violation
     end
 
-    def normalized_accepted_types
-      raw = Array(UploadDND.configuration.accepted_types).flat_map { |value| value.to_s.split(",") }
-      raw = raw.map(&:strip).reject(&:blank?)
-      return [] if raw.empty?
+    def field_constraints
+      return UploadDND::FieldConstraints.global if params[:field_ref].blank?
 
-      raw.filter_map do |type|
-        if type.include?("/")
-          type
-        else
-          ext = type.start_with?(".") ? type : ".#{type}"
-          Marcel::MimeType.for(name: "file#{ext}")
-        end
-      end.uniq
+      UploadDND::FieldReference.constraints(params[:field_ref], params[:attribute_name])
+    rescue UploadDND::FieldReference::Invalid
+      Rails.logger.warn "UploadDND: invalid field reference for #{params[:attribute_name]}"
+      render_error(I18n.t("upload_d_n_d.errors.invalid_field_reference"), :bad_request)
+      nil
     end
 
     # === Autorisation ===

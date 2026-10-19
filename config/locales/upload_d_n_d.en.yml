@@ -17,6 +17,7 @@ en:
       suspicious_type: "The actual file type does not match the declared type"
       mime_detection_failed: "Unable to verify file type."
       bad_request: "Invalid request."
+      invalid_field_reference: "Invalid file field. Please reload the page."
       max_files_exceeded: "You cannot add more than %{max} files"
       file_not_found_or_denied: "File not found or access denied"
       save_failed: "Save failed: %{errors}"
