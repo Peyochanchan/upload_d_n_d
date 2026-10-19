@@ -62,7 +62,7 @@ UploadDND.configure do |config|
   #   Rails.logger.error "Upload failed: #{error.message} for #{user&.email}"
   # }
 
-  # Rate limiting (nécessite rack-attack ou similaire)
+  # Rate limiting (compteur basé sur Rails.cache ; aucune gem requise)
   # config.rate_limit_enabled = true
   # config.rate_limit_max_requests = 10
   # config.rate_limit_period = 1.minute
