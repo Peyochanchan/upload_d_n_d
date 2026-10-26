@@ -7,7 +7,7 @@ gem "puma"
 
 gem "pg"
 gem "sprockets-rails"
-gem "view_component", "~> 3.0"
+gem "view_component", "~> 4.14"
 
 # App dummy : chaîne Hotwire d'une app hôte, pour tester le composant dans un
 # navigateur (développement uniquement, hors gemspec)
