@@ -49,10 +49,14 @@ jobs:
     name: test (ruby ${{ matrix.ruby }}, ${{ matrix.gemfile }})
 
     # Base jetable, propre au job : ces identifiants ne sont pas des secrets.
-    # Le job tourne en conteneur (act_runner) : le service est joint par son nom.
+    # Gitea (act_runner) : le job tourne en conteneur, le service est joint par son nom.
+    # GitHub : le job tourne sur la VM, le service est joint via un port publié sur l'hôte.
     services:
       postgres:
         image: postgres:16
+        # Port hôte aléatoire : pas de conflit entre jobs parallèles sur un même runner.
+        ports:
+          - 5432
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -65,8 +69,7 @@ jobs:
     env:
       RAILS_ENV: test
       BUNDLE_GEMFILE: ${{ matrix.gemfile }}
-      DATABASE_URL: postgres://postgres:postgres@postgres:5432/upload_d_n_d_test
-      # L'hôte n'est pas localhost : levée du garde-fou de DatabaseCleaner,
+      # Sur Gitea, l'hôte n'est pas localhost : levée du garde-fou de DatabaseCleaner,
       # la base est celle du service ci-dessus.
       DATABASE_CLEANER_ALLOW_REMOTE_DATABASE_URL: "true"
 
@@ -82,6 +85,17 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
+
+      - name: Configure database URL
+        env:
+          SERVICE_PORT: ${{ job.services.postgres.ports['5432'] }}
+        run: |
+          if [ "$GITEA_ACTIONS" = "true" ]; then
+            address="postgres:5432"
+          else
+            address="localhost:$SERVICE_PORT"
+          fi
+          echo "DATABASE_URL=postgres://postgres:postgres@$address/upload_d_n_d_test" >> "$GITHUB_ENV"
 
       - name: Prepare database
         run: bin/rails app:db:prepare
