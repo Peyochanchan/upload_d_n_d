@@ -58,7 +58,7 @@ RSpec.describe UploadDND::TemporaryAttachmentsController, type: :controller do
       expect(response).to have_http_status(:unprocessable_content)
     end
 
-    # Le cas type : limites du champ plus larges que la configuration globale.
+    # Cas réel : limites du champ plus larges que la configuration globale.
     it 'accepts a file within the field limits but outside the global ones' do
       UploadDND.configuration.max_size = 5
       UploadDND.configuration.accepted_types = '.png'
