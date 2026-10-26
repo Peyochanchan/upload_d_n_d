@@ -5,11 +5,16 @@ Gem::Specification.new do |spec|
   spec.version     = UploadDND::VERSION
   spec.authors     = [ "Pierre Cherbero" ]
   spec.email       = [ "cameleon24@outlook.fr" ]
-  spec.summary     = "Système de drag & drop sécurisé pour Rails avec ActiveStorage"
-  spec.description = "UploadDND fournit une interface drag & drop élégante et sécurisée pour vos uploads de fichiers dans Rails. Basé sur ActiveStorage, Stimulus et ViewComponent, il offre une validation serveur robuste, un support d'upload temporaire, et une intégration facile avec Pundit/CanCanCan."
+  spec.summary     = "Secure drag & drop file uploads for Rails, built on ActiveStorage"
+  spec.description = "UploadDND provides a drag & drop upload interface for Rails apps, built on ActiveStorage, Stimulus and ViewComponent. It validates files server-side (MIME sniffing, size, count), supports temporary uploads for new records, and authorizes every request fail-closed through Pundit or CanCanCan."
   spec.license     = "MIT"
 
-  # Dépôt privé : pas d'URL publique tant que la publication n'est pas tranchée.
+  spec.homepage    = "https://github.com/Peyochanchan/upload_d_n_d"
+
+  spec.metadata["source_code_uri"] = spec.homepage
+  spec.metadata["changelog_uri"] = "#{spec.homepage}/blob/main/docs/CHANGELOG.md"
+  spec.metadata["bug_tracker_uri"] = "#{spec.homepage}/issues"
+  spec.metadata["rubygems_mfa_required"] = "true"
 
   spec.required_ruby_version = ">= 3.2"
 

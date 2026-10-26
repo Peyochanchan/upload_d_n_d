@@ -1,793 +1,227 @@
 # UploadDND
 
-Un système de drag & drop sécurisé et élégant pour vos applications Rails, basé sur ActiveStorage, Stimulus et ViewComponent.
+[![CI](https://github.com/Peyochanchan/upload_d_n_d/actions/workflows/ci.yml/badge.svg)](https://github.com/Peyochanchan/upload_d_n_d/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](MIT-LICENSE)
+![Ruby](https://img.shields.io/badge/ruby-%3E%3D%203.2-red)
+![Rails](https://img.shields.io/badge/rails-7.2%20%7C%208.0%20%7C%208.1-red)
 
-## Fonctionnalités
+🇫🇷 [Version française](README.fr.md)
 
-- **Interface drag & drop intuitive** avec barre de progression
-- **Validation sécurisée côté serveur** (MIME type, taille, nombre de fichiers)
-- **Upload temporaire** pour les formulaires de création (avant persistance)
-- **Support multi-fichiers** (has_one_attached et has_many_attached)
-- **Autorisation fail-closed** (Pundit, CanCanCan, ou désactivation explicite)
-- **Protection contre le spoofing** de fichiers via détection MIME
-- **Logging et audit trail** complet
-- **Configuration globale et par composant**
-- **Compatible Rails 7 et 8**
+Secure drag & drop file uploads for Rails, built on ActiveStorage, Stimulus and ViewComponent.
+
+One line in a view gives you a drop zone with progress, previews and removal — while every file is checked server-side against the limits declared on the model, and every request goes through your authorization layer, fail-closed.
+
+```erb
+<%= upload_field :documents, record: @project %>
+```
+
+## Why
+
+ActiveStorage handles storage; it does not handle the hard parts of a production upload flow:
+
+- **Trusting the browser.** `accept` attributes and JS size checks are UX, not security. UploadDND re-applies the model's limits on the server as soon as the file lands, and optionally sniffs the real content type (Marcel) to catch spoofed extensions.
+- **Uploading before the record exists.** Creation forms need files before `save`. Temporary uploads are scoped to the session, survive a page reload, and are re-validated when wired to the record.
+- **Authorization gaps.** Upload endpoints are easy to leave open. Here every upload and deletion goes through Pundit or CanCanCan; with no usable adapter, everything is refused (403). Disabling it (`:none`) is explicit and reported at boot.
+- **Storage garbage.** DirectUpload puts the file in your bucket before anyone validates it. Rejected blobs are purged in the background, and an opt-in job removes orphan blobs — without touching files still referenced in stored HTML.
+
+## Features
+
+- Drag & drop with progress bar, image and PDF previews
+- `has_one_attached` and `has_many_attached`, with `max_files`
+- Server-side validation: allowlisted MIME types, size, count, optional anti-spoofing
+- Temporary uploads for creation forms, persisted across reloads
+- Fail-closed authorization (Pundit, CanCanCan, or explicit opt-out)
+- One file, one owner: an already-attached `signed_id` can't be re-attached elsewhere
+- Rate limiting on the engine endpoints
+- Cleanup jobs for expired temporary files, rejected and orphan blobs
+- Works in any namespace (`Admin::`, `Manager::`…), no routes required in the host app
+- Generators for install, models and Pundit policies
+- I18n (EN/FR) server messages
 
 ## Installation
 
-### 1. Ajoutez la gem à votre Gemfile
-
 ```ruby
-gem "upload_d_n_d"
+# Gemfile
+gem "upload_d_n_d", github: "Peyochanchan/upload_d_n_d"
 ```
-
-### 2. Installez la gem
 
 ```bash
 bundle install
+bin/rails generate upload_d_n_d:install
+bin/rails db:migrate
 ```
 
-### 3. Lancez le générateur d'installation
+The installer adds `view_component` and `stimulus-rails` if missing, creates the temporary uploads migration, mounts the engine, writes the initializer and, if Pundit is present, the policies.
 
-```bash
-rails generate upload_d_n_d:install
-```
+Everything else (JS, CSS, components, concerns) is served from the gem: upgrading is a `bundle update`.
 
-Le générateur va :
-- Vérifier et ajouter `view_component` et `stimulus-rails` au Gemfile si nécessaire
-- Créer la migration pour les fichiers temporaires
-- Installer le helper et le fichier d'autorisation (personnalisables)
-- Monter les routes du moteur
-- Créer le fichier de configuration
-- (Optionnel) Générer la policy Pundit si Pundit est détecté
-
-> **Architecture v0.5.0** : Tout est servi depuis la gem (JS, CSS, ViewComponent, concerns). Aucun fichier n'est copié dans l'app hôte (sauf le helper et l'autorisation, qui sont personnalisables). Un simple `bundle update` suffit pour mettre à jour.
->
-> **Migration depuis v0.4.x ?** Voir le [guide de migration](docs/MIGRATION_0.5.md).
-
-### 4. Lancez la migration
-
-```bash
-rails db:migrate
-```
-
-### 5. Configurez ActiveStorage
-
-Si ce n'est pas déjà fait, installez et configurez ActiveStorage :
-
-```bash
-rails active_storage:install
-rails db:migrate
-```
-
-#### URLs des blobs : redirect ou proxy
-
-Les URLs de prévisualisation et de téléchargement suivent le réglage standard
-`config.active_storage.resolve_model_to_route` de votre application :
-
-- `:rails_storage_redirect` (défaut Rails) — redirection vers une URL signée
-  temporaire du service de stockage (S3, etc.)
-- `:rails_storage_proxy` — les fichiers sont servis par votre application,
-  en same-origin
-
-Avec un bucket S3-like externe et une CSP stricte (`frame-src 'self'`,
-`img-src 'self'`), le mode redirect casse les prévisualisations. Passez en
-mode proxy :
+ActiveStorage must be installed (`bin/rails active_storage:install`). With an external S3-like bucket and a strict CSP, serve files same-origin:
 
 ```ruby
-# config/application.rb ou config/environments/production.rb
 config.active_storage.resolve_model_to_route = :rails_storage_proxy
 ```
 
-Aucune configuration côté gem : elle respecte ce réglage partout (previews,
-API JSON).
+## Usage
 
-## Configuration
-
-Éditez `config/initializers/upload_d_n_d.rb` :
+### Declare the field on the model
 
 ```ruby
-UploadDND.configure do |config|
-  # Taille maximale par défaut (peut être surchargée par composant)
-  config.max_size = 10.megabytes
-
-  # Types de fichiers acceptés par défaut
-  config.accepted_types = '.pdf,.doc,.docx,.jpg,.jpeg,.png,.gif'
-
-  # Couleur du thème
-  config.main_color = '#E97451'
-
-  # Durée de conservation des fichiers temporaires (en jours)
-  config.temporary_files_retention = 7
-
-  # Autorisation : :pundit ou :cancancan (détectés automatiquement), ou :none.
-  # Sans adaptateur utilisable, tout upload et toute suppression sont refusés.
-  # config.authorization_adapter = :pundit
-
-  # Rate limiting (protection contre les abus)
-  config.rate_limit_enabled = true         # Activer/désactiver le rate limiting
-  config.rate_limit_max_requests = 10      # Nombre max de requêtes
-  config.rate_limit_period = 60            # Période en secondes
-
-  # Callbacks personnalisés
-  config.on_upload_success = ->(blob, user) {
-    Rails.logger.info "File uploaded: #{blob.filename} by #{user&.email}"
-  }
-  config.on_file_removed = ->(record, attribute_name, user) {
-    Rails.logger.info "File removed from #{record.class}##{record.id} by #{user&.id}"
-  }
-
-  # Route de suppression : :engine (défaut, aucune route requise côté app)
-  # ou :host (legacy, route membre remove_file de votre app)
-  # config.delete_route = :engine
-end
-```
-
-## Usage rapide avec le générateur
-
-### Commande magique : `rails generate upload_d_n_d:model`
-
-Le moyen le plus rapide de configurer un modèle avec drag & drop :
-
-```bash
-# Configuration basique - 1 seule commande!
-rails g upload_d_n_d:model User --attribute=avatar
-
-# Upload multiple avec namespace
-rails g upload_d_n_d:model Admin::Article --attribute=images --multiple
-
-# Fichiers PDF volumineux
-rails g upload_d_n_d:model Manager::Report \
-  --attribute=pdf_file \
-  --content_type=pdf \
-  --max_size=50
-```
-
-### Exemples d'utilisation
-
-```bash
-# 💼 Avatar utilisateur
-rails g upload_d_n_d:model User --attribute=avatar
-
-# 📸 Galerie de photos (max 10 images)
-rails g upload_d_n_d:model Product \
-  --attribute=photos \
-  --multiple \
-  --max_files=10
-
-# 📄 Documents Office dans namespace Admin
-rails g upload_d_n_d:model Admin::Article \
-  --attribute=documents \
-  --multiple \
-  --content_type=pdf doc docx \
-  --max_size=20
-
-# 🎨 Images WebP uniquement
-rails g upload_d_n_d:model Post \
-  --attribute=cover_image \
-  --content_type=webp
-
-# ⚙️ Seulement le modèle (pas de controller/vues)
-rails g upload_d_n_d:model User \
-  --attribute=avatar \
-  --no-controller \
-  --no-views
-```
-
-### 🔍 Options disponibles
-
-| Option | Description | Défaut | Exemple |
-|--------|-------------|--------|---------|
-| `--attribute` | Nom de l'attribut (requis) | - | `--attribute=avatar` |
-| `--multiple` | Upload multiple fichiers | `false` | `--multiple` |
-| `--content_type` | Extensions de fichiers acceptées | `jpg png` | `--content_type=pdf doc docx` (ou `--content_type=pdf,doc,docx`) |
-| `--max_size` | Taille max en MB | `5` | `--max_size=50` |
-| `--max_files` | Nombre max de fichiers | `nil` | `--max_files=10` |
-| `--no-controller` | Ne pas afficher les instructions controller | `false` | `--no-controller` |
-| `--no-views` | Ne pas afficher les instructions vues | `false` | `--no-views` |
-
-> **Note** : L'option `--content_type` accepte les **extensions de fichiers** (ex: `jpg png pdf`) qui sont automatiquement converties en MIME types.
-> Vous pouvez les passer séparées par **espaces** ou par **virgules** (ex: `pdf,docx,pptx`).
-> Les MIME types restent acceptés si vous préférez (ex: `application/pdf`).
-
-### 📝 Ce que fait le générateur
-
-Le générateur `upload_d_n_d:model` est **non-invasif** et fournit des **instructions claires** pour :
-
-1. **Modèle** : affiche le code à ajouter (concern, association ActiveStorage, configuration uploadable)
-2. **Controller** : affiche les instructions pour inclure le concern `UploadDND::Controllers::Uploadable` et ajouter les actions `attach_file` et `remove_file`
-3. **Routes** : affiche les routes à ajouter dans votre `config/routes.rb`
-4. **Vues** : affiche comment utiliser le helper `upload_field` dans vos formulaires
-
-**Aucun fichier n'est modifié automatiquement**, vous gardez le contrôle total. Les vues (liste de fichiers, preview) sont **fournies par la gem** et n'ont pas besoin d'être générées.
-
-### Documentation complète
-
-Pour plus d'exemples et de scénarios : voir [GENERATOR_EXAMPLES.md](docs/GENERATOR_EXAMPLES.md)
-
-Pour l'aide en ligne de commande :
-```bash
-rails g upload_d_n_d:model --help
-```
-
-## Usage manuel (sans générateur)
-
-### 1. Préparez votre modèle
-
-```ruby
-class User < ApplicationRecord
+class Project < ApplicationRecord
   include UploadDND::Uploadable
 
-  # Pour un seul fichier (has_one_attached déclaré automatiquement)
-  uploadable :avatar,
-             accept: [:jpg, :png],
+  uploadable :cover,                   # declares has_one_attached
+             accept: [:jpg, :png, :webp],
              max_size: 5.megabytes,
              strict_mime_check: true
 
-  # Pour plusieurs fichiers (has_many_attached déclaré automatiquement)
-  uploadable :documents,
-             accept: [:pdf],
-             max_size: 10.megabytes,
+  uploadable :documents,               # declares has_many_attached
+             accept: [:pdf, :docx],
+             max_size: 20.megabytes,
              multiple: true,
-             max_files: 5,
-             strict_mime_check: true
+             max_files: 10
 end
 ```
 
-> **Note v0.4.0** : `uploadable` déclare automatiquement `has_one_attached` / `has_many_attached`.
-> Utilisez `accept:` avec des symboles d'extension (`:jpg`, `:pdf`, etc.) au lieu de strings MIME.
-> Les strings MIME restent acceptées via `content_type:` pour la rétrocompatibilité.
+The model is the source of truth: the same limits drive the browser checks and the server checks. Options passed to the view helper can only narrow them.
 
-### 2. Utilisez le helper dans vos vues
+Or let the generator print the snippets for you:
 
-#### Upload simple (record existant)
+```bash
+bin/rails g upload_d_n_d:model Project --attribute=documents --multiple --content_type=pdf docx --max_size=20
+```
+
+### Use it in a form
 
 ```erb
-<%= form_with model: @user do |f| %>
-  <%= f.text_field :name %>
+<%= form_with model: @project do |f| %>
+  <%= upload_session_field %>   <%# only needed for new records %>
 
-  <%= upload_field :avatar, record: @user %>
+  <%= f.text_field :name %>
+  <%= upload_field :cover, record: @project %>
+  <%= upload_field :documents, record: @project %>
 
   <%= f.submit %>
 <% end %>
 ```
 
-#### Upload multiple avec configuration personnalisée
-
-```erb
-<%= upload_field :documents,
-                 record: @project,
-                 multiple: true,
-                 accepted_types: '.pdf,.docx',
-                 max_size: 10.megabytes %>
-```
-
-#### Limites d'un champ : le modèle fait foi
-
-Les limites déclarées par `uploadable` (`accept:`, `max_size:`,
-`strict_mime_check:`) sont appliquées à l'identique par le navigateur et par le
-serveur, dès le dépôt du fichier ; une limite que le modèle ne déclare pas
-retombe sur la configuration globale. Un fichier refusé n'est pas conservé.
-
-- Avec un `record:` (persisté ou non), le composant transmet une référence
-  signée du champ : le serveur applique les limites du modèle.
-- Sans `record:`, ce sont les limites globales. Pour un formulaire de création,
-  passez donc un record neuf (`record: User.new`) plutôt que rien.
-- `accepted_types:` et `max_size:` sur `upload_field` ne changent que
-  l'affichage et le contrôle du navigateur : le serveur applique toujours les
-  limites du modèle. Une valeur plus large que le modèle est refusée au dépôt.
-- Les fichiers temporaires sont revérifiés au transfert vers le record : un
-  fichier hors limites du champ cible est écarté (et journalisé).
-
-#### Upload temporaire (nouveau record)
-
-Pour les formulaires de création, utilisez upload temporaire :
-
-```erb
-<%= form_with model: @user, url: users_path do |f| %>
-  <%# Champ caché pour lier les uploads temporaires %>
-  <%= upload_session_field %>
-
-  <%= f.text_field :name %>
-
-  <%# Record neuf : fichiers stockés temporairement, limites du modèle %>
-  <%= upload_field :avatar, record: @user %>
-
-  <%= f.submit %>
-<% end %>
-```
-
-Dans votre controller :
+For a new record, files are stored temporarily and attached on save:
 
 ```ruby
-class UsersController < ApplicationController
+class ProjectsController < ApplicationController
   include UploadDND::Controllers::Uploadable
 
   def create
-    @user = User.new(user_params)
+    @project = Project.new(project_params)
+    wire_temporary_uploads(@project) # checks the session, re-validates each file
 
-    # Lie les uploads temporaires (vérifie le session_id automatiquement)
-    wire_temporary_uploads(@user)
-
-    if @user.save
-      # Les fichiers temporaires seront automatiquement attachés
-      redirect_to @user, notice: 'Utilisateur créé avec succès'
+    if @project.save
+      redirect_to @project
     else
       render :new, status: :unprocessable_entity
     end
   end
-
-  private
-
-  def user_params
-    params.require(:user).permit(:name)
-  end
 end
 ```
 
-**Sécurité** : `wire_temporary_uploads` vérifie que le `session_id` correspond à la session actuelle.
-Le `temp_upload_session_id` utilise une variable d'instance privée (`@_temp_upload_session_id`).
-
-**Persistance au rechargement** : les fichiers temporaires sont liés à la session. Si
-l'utilisateur recharge la page (F5, restauration de brouillon, reconnexion), le
-composant affiche à nouveau les fichiers déjà déposés — rien à faire côté app.
-
-Si votre formulaire remplace la zone sans repasser par `upload_field` (Turbo Frame,
-formulaire multi-étapes…), vous pouvez récupérer le HTML de la liste vous-même :
-
-```
-GET /upload_d_n_d/temporary_attachments?attribute_name=documents
-```
-
-Réponse : le partial `<div id="udnd_files_list_documents">…</div>`, limité aux fichiers
-de la session courante. `400` sans `attribute_name` valide.
-
-**Annulation du formulaire** : les fichiers déposés restent liés à la session jusqu'à
-purge automatique (`temporary_files_retention`). Pour qu'ils ne réapparaissent pas
-dans le formulaire suivant quand l'utilisateur annule, purgez-les explicitement :
-
-```
-DELETE /upload_d_n_d/temporary_attachments?attribute_name=documents   → 204
-```
-
-Par exemple depuis un bouton « Annuler » :
-
-```js
-fetch("/upload_d_n_d/temporary_attachments?attribute_name=documents", {
-  method: "DELETE",
-  headers: { "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content }
-}).then(() => Turbo.visit(backUrl))
-```
-
-Scopé sur la session courante ; soumis à la règle `destroy` de l'adaptateur d'autorisation.
-
-### 3. Utilisation dans différents namespaces
-
-UploadDND fonctionne de manière transparente dans **tous les namespaces** de votre application :
-
-#### Namespace public
+### Authorize
 
 ```ruby
-# app/models/user.rb
-class User < ApplicationRecord
-  include UploadDND::Uploadable
-
-  uploadable :avatar,
-             accept: [:jpg, :png],
-             max_size: 5.megabytes,
-             strict_mime_check: true
-end
-```
-
-```erb
-<!-- app/views/users/edit.html.erb -->
-<%= upload_field :avatar, record: @user %>
-```
-
-#### Namespace Admin
-
-```ruby
-# app/models/admin/article.rb
-module Admin
-  class Article < ApplicationRecord
-    include UploadDND::Uploadable
-
-    uploadable :images,
-               accept: [:jpg, :png],
-               max_size: 10.megabytes,
-               multiple: true,
-               max_files: 10,
-               strict_mime_check: true
-  end
-end
-```
-
-```erb
-<!-- app/views/admin/articles/edit.html.erb -->
-<%= upload_field :images,
-                 record: @article,
-                 multiple: true %>
-```
-
-#### Namespace Manager ou autre
-
-```ruby
-# app/models/manager/report.rb
-module Manager
-  class Report < ApplicationRecord
-    include UploadDND::Uploadable
-
-    uploadable :pdf_file,
-               accept: [:pdf],
-               max_size: 50.megabytes,
-               strict_mime_check: true
-  end
-end
-```
-
-```erb
-<!-- app/views/manager/reports/new.html.erb -->
-<%= upload_field :pdf_file,
-                 record: @report,
-                 accepted_types: '.pdf',
-                 max_size: 50.megabytes %>
-```
-
-**Comment ça fonctionne :**
-- Le moteur UploadDND est monté sur `/upload_d_n_d` (indépendant des namespaces)
-- Le helper `upload_field` est disponible dans toutes les vues
-- Le concern `Uploadable` peut être inclus dans n'importe quel modèle
-- Les autorisations sont gérées au niveau du modèle (Pundit/CanCanCan)
-
-#### Suppression de fichiers : par le moteur (défaut) ou par vos routes
-
-Depuis la v0.7, la suppression d'un fichier passe par défaut par le moteur
-de la gem (`DELETE /upload_d_n_d/attachments/:id` + `record_gid`), comme
-l'upload : **aucune route requise côté app**, quel que soit le routing du
-record (imbriqué, singulier, namespacé). L'autorisation utilise la policy
-Pundit du record (`update?`), avec fallback sur
-`UploadDND::AttachmentPolicy#destroy?` si le modèle n'a pas de policy.
-
-L'upload sur un record existant (`POST /upload_d_n_d/attachments`) vérifie
-la policy générique (`UploadDNDAttachmentPolicy#create?`) **puis** la policy
-du record (`update?`) si le modèle en a une — depuis la v0.7.2.
-
-Pour brancher de la logique après suppression :
-
-```ruby
-UploadDND.configure do |config|
-  config.on_file_removed = ->(record, attribute_name, user) {
-    Rails.logger.info "File removed from #{record.class}##{record.id} (#{attribute_name}) by #{user&.id}"
-  }
-end
-```
-
-Le flux historique (suppression via la route membre `remove_file` de votre
-app et le concern `Controllers::Uploadable`) reste disponible :
-
-```ruby
-UploadDND.configure do |config|
-  config.delete_route = :host # défaut : :engine
-end
-```
-
-Utilisez-le si vos actions `remove_file` contiennent de la logique custom
-que `on_file_removed` ne couvre pas. Le reste de cette section ne concerne
-que ce mode `:host`.
-
-#### Records imbriqués ou resources singulières (mode `:host` uniquement)
-
-En mode `:host`, la liste de fichiers construit l'URL de suppression via
-`polymorphic_path(record)` : le record doit donc avoir une route
-polymorphique. C'est automatique pour un `resources :xxx` top-level (y
-compris namespacé), mais **pas** pour une resource imbriquée ou singulière.
-Dans ce cas, déclarez la résolution dans `config/routes.rb` avec
-[`resolve`](https://guides.rubyonrails.org/routing.html#using-resolve) — le
-mécanisme Rails prévu pour ça :
-
-```ruby
-# resource :convention (singulière), imbriquée sous resources :projects
-resolve("Convention") { |convention, options| route_for(:project_convention, convention.project, options) }
-
-# resources :documents imbriqué sous resources :projects
-resolve("Document") { |document, options| route_for(:project_document, document.project, document, options) }
-```
-
-> `resolve` se déclare au niveau racine du bloc `routes.draw`.
-
-Sans résolution possible, la gem lève `UploadDND::UnroutableRecordError`
-avec ces instructions (plutôt qu'un `undefined method 'xxx_path'` cryptique).
-
-Pour un routing vraiment exotique, le point d'extension officiel est le
-helper `udnd_remove_file_url(record, attachment, attribute_name)`, à
-redéfinir dans le `ApplicationHelper` de votre app. **Ne shadowez pas le
-partial `_files_list`** pour ça : un partial copié ne suit pas les mises à
-jour de la gem.
-
-### 4. Autorisation
-
-Chaque upload et chaque suppression passe par la librairie d'autorisation de
-l'app, choisie par `config.authorization_adapter` :
-
-| Valeur | Comportement |
-|---|---|
-| `:pundit` | Détecté automatiquement si Pundit est chargé. Le contrôleur doit inclure `Pundit::Authorization` |
-| `:cancancan` | Détecté automatiquement si CanCanCan est chargé (et Pundit absent) |
-| `:none` | Aucune autorisation, seulement l'authentification. Signalé au démarrage |
-| `nil` ou autre | **Tout est refusé (403)**. Signalé au démarrage |
-
-Règles vérifiées :
-
-| Action | Pundit | CanCanCan |
-|---|---|---|
-| Upload sur un record | `UploadDNDAttachmentPolicy#create?` puis `update?` du record (ignoré si le modèle n'a pas de policy) | `:create, :upload_d_n_d_attachment` puis `:update, record` |
-| Suppression sur un record | `update?` du record, sinon `UploadDNDAttachmentPolicy#destroy?` | `:update, record` |
-| Upload temporaire | `UploadDNDTemporaryAttachmentPolicy#create?` | `:create, :upload_d_n_d_temporary_attachment` |
-| Suppression temporaire, purge | `UploadDNDTemporaryAttachmentPolicy#destroy?` | `:destroy, :upload_d_n_d_temporary_attachment` |
-| `attach_file`, `remove_file` (concern) | `update?` du record (policy namespacée d'abord) | `:update, record` |
-
-Avec Pundit, une policy générique absente fait échouer la requête (500)
-plutôt que de la laisser passer : `rails g upload_d_n_d:policy` les génère.
-
-#### Avec Pundit
-
-```ruby
-# app/policies/user_policy.rb
-class UserPolicy < ApplicationPolicy
+# Pundit — uploads and deletions on a record require update?
+class ProjectPolicy < ApplicationPolicy
   def update?
-    user == record || user.admin?
+    record.members.include?(user)
   end
 end
 ```
 
-#### Avec CanCanCan
-
 ```ruby
-# app/models/ability.rb
-class Ability
-  include CanCan::Ability
-
-  def initialize(user)
-    return unless user
-
-    can :create, :upload_d_n_d_attachment
-    can [ :create, :destroy ], :upload_d_n_d_temporary_attachment
-    can :update, User, id: user.id
-  end
-end
+# CanCanCan
+can :create, :upload_d_n_d_attachment
+can [:create, :destroy], :upload_d_n_d_temporary_attachment
+can :update, Project, members: { id: user.id }
 ```
 
-## Sécurité
+`bin/rails g upload_d_n_d:policy` generates the gem's generic Pundit policies. The full rule matrix is in [docs/AUTHORIZATION.md](docs/AUTHORIZATION.md).
 
-UploadDND implémente plusieurs couches de sécurité :
+## Security model
 
-1. **Validation content-type (allowlist)** : Vérifie que le type MIME du blob est autorisé (ex: `image/png`, `application/pdf`)
-   - **Anti-spoofing (optionnel)** : si vous utilisez le `FileValidator`, activez `strict_mime_check: true` pour analyser le contenu réel du fichier via Marcel (plus coûteux car nécessite de lire le fichier côté serveur).
-2. **Protection CSRF** : Tokens automatiques pour tous les uploads
-3. **Validation de paramètres** : Empêche l'injection de paramètres malveillants
-4. **Autorisation fail-closed** : Pundit ou CanCanCan ; sans adaptateur utilisable, tout est refusé. La désactivation (`:none`) est explicite et signalée au démarrage
-5. **Session isolation** : Les fichiers temporaires sont isolés par session
-6. **Logging** : Audit trail complet de tous les uploads/suppressions
-7. **Un fichier = un propriétaire** : un `signed_id` déjà rattaché (à un record ou à un fichier temporaire) est refusé (422). Le `signed_id` figure dans chaque URL de fichier : sans ce contrôle, un tiers pourrait rattacher le fichier d'un autre à ses propres records
+| Layer | What it does |
+|---|---|
+| Content-type allowlist | Only declared types are accepted |
+| Anti-spoofing | `strict_mime_check: true` inspects the actual bytes |
+| Server-side limits | Size, type and count enforced on upload, again when temporary files are wired |
+| Fail-closed authorization | No adapter → 403; `:none` must be explicit |
+| Session isolation | Temporary files only visible to the session that uploaded them |
+| Ownership | An attached blob can't be claimed by another record |
+| Rate limiting | Per user + IP on the engine endpoints (`Rails.cache` backed) |
+| Rejected blob purge | Background purge, never for attached blobs or unauthorized requests |
 
-Exemple (anti-spoofing activé) :
+ActiveStorage's own `POST /rails/active_storage/direct_uploads` belongs to your app, not the gem: throttle it too, for example with [rack-attack](https://github.com/rack/rack-attack).
 
-```ruby
-uploadable :avatar,
-           accept: [:jpg, :png],
-           max_size: 5.megabytes,
-           strict_mime_check: true
-```
-
-### Rate limiting
-
-La gem embarque un rate limiting sur ses endpoints d'attachement
-(`POST /upload_d_n_d/attachments` et `/upload_d_n_d/temporary_attachments`),
-désactivé par défaut. Pour l'activer :
-
-```ruby
-UploadDND.configure do |config|
-  config.rate_limit_enabled = true
-  config.rate_limit_max_requests = 30   # par utilisateur+IP
-  config.rate_limit_period = 60         # secondes
-end
-```
-
-Dimensionnez `rate_limit_max_requests` en fonction de vos usages : un upload
-multiple déclenche une requête d'attachement **par fichier**. Une limite trop
-basse fera échouer les derniers fichiers d'un lot légitime (HTTP 429).
-
-Le compteur s'appuie sur `Rails.cache` : en production, utilisez un store
-partagé entre processus (Redis, Memcached, SolidCache) pour que la limite
-soit globale et non par worker.
-
-### ⚠️ Protéger l'endpoint DirectUpload
-
-Les fichiers sont téléversés via ActiveStorage DirectUpload, c'est-à-dire par
-`POST /rails/active_storage/direct_uploads` — une route de **votre
-application**, hors du périmètre de la gem. Le rate limiting ci-dessus ne la
-couvre pas : sans protection, un attaquant peut créer des blobs en masse et
-saturer votre stockage sans jamais toucher les endpoints de la gem.
-
-Protégez-la côté application, par exemple avec [rack-attack](https://github.com/rack/rack-attack) :
-
-```ruby
-# config/initializers/rack_attack.rb
-Rack::Attack.throttle("direct_uploads/ip", limit: 30, period: 1.minute) do |req|
-  req.ip if req.path == "/rails/active_storage/direct_uploads" && req.post?
-end
-```
-
-#### Fichiers refusés
-
-Avec DirectUpload, le fichier est déjà dans votre stockage quand la gem le
-contrôle. Quand elle le refuse (taille, type, validation du modèle, erreur à
-l'enregistrement), elle le purge en arrière-plan
-(`UploadDND::PurgeRejectedBlobJob`, file `active_storage.queues.purge`), avec
-ces garde-fous :
-
-- un fichier rattaché à un record ou à un fichier temporaire n'est jamais supprimé, ni au refus ni à l'exécution du job ;
-- seul un fichier envoyé récemment est purgé (`config.rejected_blob_purge_window`, 1 heure par défaut ; `nil` désactive la purge) ;
-- rien n'est supprimé si l'autorisation n'a pas été explicitement accordée (refus 401 ou 403, ou autorisation qui n'aboutit pas).
-
-Pensez aussi au nettoyage des **blobs orphelins** — créés par DirectUpload mais
-jamais rattachés (refus, coupure réseau, onglet fermé). N'utilisez pas
-`ActiveStorage::Blob.unattached.purge_later` tel quel : sans garde-fou, il
-supprime des envois en cours et des fichiers cités dans du HTML stocké hors
-Action Text. La gem fournit un nettoyage sûr : voir « Blobs orphelins » ci-dessous.
-
-## Nettoyage automatique
-
-La gem fournit `UploadDND::CleanupTemporaryAttachmentsJob`, qui purge les
-fichiers temporaires expirés (au-delà de `temporary_files_retention` jours).
-Aucun job à écrire côté app : il suffit de planifier sa récurrence.
-
-Avec solid_queue (Rails 8+) :
-
-```yaml
-# config/recurring.yml
-production:
-  cleanup_temporary_uploads:
-    class: UploadDND::CleanupTemporaryAttachmentsJob
-    schedule: every day at 2am
-    queue: background
-```
-
-Ou avec Mission Control - Jobs dans `config/initializers/solid_queue.rb` :
-
-```ruby
-# config/initializers/solid_queue.rb
-SolidQueue.configure do |config|
-  config.recurring_tasks = [
-    {
-      key: "cleanup_temporary_uploads",
-      schedule: "0 2 * * *", # Tous les jours à 2h du matin (cron syntax)
-      class: "UploadDND::CleanupTemporaryAttachmentsJob"
-    }
-  ]
-end
-```
-
-Ou avec sidekiq-cron :
-
-```yaml
-# config/schedule.yml
-cleanup_temporary_uploads:
-  cron: "0 2 * * *"
-  class: "UploadDND::CleanupTemporaryAttachmentsJob"
-```
-
-### Blobs orphelins
-
-Un blob envoyé par DirectUpload mais jamais rattaché (refus, coupure réseau,
-onglet fermé, image retirée d'un éditeur) n'est pas un fichier temporaire : le
-job ci-dessus ne le voit pas. La gem fournit un nettoyage dédié, **opt-in**.
-
-Un blob n'est supprimé que si, cumulativement : aucun rattachement (record,
-variante, Action Text) ; créé depuis plus de `orphan_blob_min_age` (2 jours par
-défaut) ; non gardé par un fichier temporaire ; et **non cité dans un texte de la
-base** — colonnes texte et JSON — par la clé du bucket, par le `signed_id`, ou
-par un fichier inséré avec l'éditeur (sgid). Le nom de fichier n'est jamais
-utilisé.
-
-Aperçu sans rien supprimer, puis suppression explicite :
-
-```bash
-bin/rails upload_d_n_d:purge_orphans            # simulation (rapport)
-APPLY=1 bin/rails upload_d_n_d:purge_orphans    # suppression
-```
-
-Récurrence via `UploadDND::PurgeOrphanBlobsJob`. Par défaut il **journalise un
-rapport sans supprimer** ; passez `apply: true` pour supprimer :
+## Maintenance jobs
 
 ```yaml
 # config/recurring.yml (solid_queue)
 production:
+  cleanup_temporary_uploads:
+    class: UploadDND::CleanupTemporaryAttachmentsJob
+    schedule: every day at 2am
   purge_orphan_blobs:
     class: UploadDND::PurgeOrphanBlobsJob
     args: [{ "apply": true }]
     schedule: every sunday at 3am
 ```
 
-Réglages (initializer) :
+The orphan purge is opt-in and conservative: a blob is removed only if it has no attachment, is older than `orphan_blob_min_age`, and isn't referenced anywhere in the database's text and JSON columns (bucket key, `signed_id` or Action Text sgid). Dry-run first:
+
+```bash
+bin/rails upload_d_n_d:purge_orphans           # report only
+APPLY=1 bin/rails upload_d_n_d:purge_orphans   # delete
+```
+
+PostgreSQL is required for the reference scan; on other databases the job raises instead of deleting blindly.
+
+## Configuration
 
 ```ruby
+# config/initializers/upload_d_n_d.rb
 UploadDND.configure do |config|
-  # Âge minimal avant qu'un blob sans rattachement soit candidat
-  # config.orphan_blob_min_age = 2.days
+  config.max_size = 10.megabytes
+  config.accepted_types = ".pdf,.jpg,.jpeg,.png"
+  config.main_color = "#E97451"
+  config.temporary_files_retention = 7 # days
 
-  # Limite le scan des citations aux colonnes de texte riche de l'app
-  # (borne la mémoire sur une grosse base). Sans liste, toutes les colonnes
-  # texte/JSON sont scannées.
-  # config.orphan_scan_columns = ["projects.description", "pages.body_translations"]
+  # :pundit / :cancancan are auto-detected; :none disables authorization
+  # config.authorization_adapter = :pundit
 
-  # Motifs d'adresse supplémentaires pour protéger les citations par URL
-  # directe du bucket (image collée au lieu d'être insérée).
-  # config.orphan_scan_patterns = ["%votre-bucket.example.com%"]
+  config.rate_limit_enabled = true
+  config.rate_limit_max_requests = 30 # one request per file
+  config.rate_limit_period = 60
 
-  # Tables à exclure du scan, en plus des tables système
-  # config.orphan_scan_excluded_tables = ["gros_logs"]
+  config.on_upload_success = ->(blob, user) { AuditLog.record(:upload, blob, user) }
+  config.on_file_removed = ->(record, attribute_name, user) { AuditLog.record(:removal, record, user) }
 end
 ```
 
-> **PostgreSQL requis** pour le scan des citations (il repose sur `CAST ... AS
-> text` et `ILIKE`). Sur un autre SGBD, le job lève une erreur explicite plutôt
-> que de supprimer sans ce filet de sécurité.
+The French README covers every option in detail: nested and singular resources, custom delete routes, cancelling temporary uploads, styling.
 
-## Customisation du style
-
-Surchargez les styles CSS en créant un fichier `app/assets/stylesheets/upload_d_n_d_custom.css` :
-
-```css
-.udnd-dropzone {
-  border: 2px dashed var(--udnd-accent-color, #E97451);
-  background: #f8f9fa;
-}
-
-.udnd-dropzone.dragover {
-  background: #e9ecef;
-  border-color: #28a745;
-}
-```
-
-## Développement
-
-Après avoir cloné le repo :
+## Development
 
 ```bash
 bundle install
-rails db:migrate
-rails server
-```
-
-Pour lancer les tests :
-
-```bash
 bundle exec rspec
+bin/rubocop
 ```
 
-## Roadmap
+The suite runs against a dummy app on PostgreSQL. CI runs RuboCop and the spec suite.
 
-- [x] Prévisualisation (images + PDF) via Stimulus
-- [x] Internationalisation (FR/EN) des messages serveur
-- [x] Support complet des namespaces (Admin::, Manager::, etc.)
-- [ ] Compression / optimisation d'images (optionnel, configurable)
-- [ ] Scan antivirus (ClamAV ou service externe) avant attachement/persist
-- [ ] Direct Upload (S3/GCS) + support des gros fichiers (UX + retry)
-- [ ] Tests de générateurs (install + model) et amélioration de la couverture
-- [ ] Internationalisation des messages côté JavaScript
-- [ ] Guide "production hardening" (rate limiting, CSP, stockage, jobs cleanup)
+## Docs
 
-## Contributing
-
-Les contributions sont les bienvenues ! Merci de :
-1. Forker le projet
-2. Créer une branche pour votre feature (`git checkout -b feature/amazing-feature`)
-3. Commiter vos changements (`git commit -m 'Add amazing feature'`)
-4. Pusher vers la branche (`git push origin feature/amazing-feature`)
-5. Ouvrir une Pull Request
+- [Authorization](docs/AUTHORIZATION.md)
+- [Generator examples](docs/GENERATOR_EXAMPLES.md)
+- [Migrating to 0.5](docs/MIGRATION_0.5.md)
+- [Changelog](docs/CHANGELOG.md)
 
 ## License
 
-The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
+Released under the [MIT License](MIT-LICENSE).

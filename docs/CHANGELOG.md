@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Nettoyage des blobs orphelins** (`UploadDND::OrphanBlobs`, `UploadDND::PurgeOrphanBlobsJob`, tâche rake `upload_d_n_d:purge_orphans`) : supprime, de façon opt-in, les blobs envoyés par DirectUpload mais jamais rattachés (refus, coupure réseau, onglet fermé). Un blob n'est supprimé que s'il n'a aucun rattachement, est plus vieux que `orphan_blob_min_age` (2 jours par défaut), n'est pas gardé par un fichier temporaire, et n'est **cité dans aucun texte de la base** (colonnes texte et JSON) — par clé du bucket, par `signed_id` ou par sgid ; jamais par le nom de fichier. La rake simule par défaut (`APPLY=1` pour supprimer), le job journalise un rapport par défaut (`apply: true` pour supprimer). Réglages : `orphan_blob_min_age`, `orphan_scan_columns` (liste blanche pour borner la mémoire), `orphan_scan_patterns`, `orphan_scan_excluded_tables`. PostgreSQL requis pour le scan des citations (sinon erreur explicite, jamais de suppression sans ce filet)
-- **`view_component` déclaré en dépendance d'exécution** (`>= 3.0`) : `UploadComponent` en hérite, la dépendance était jusqu'ici implicite. Sans effet pour une app qui l'a déjà (dont l'app hôte)
+- **`view_component` déclaré en dépendance d'exécution** (`>= 3.0`) : `UploadComponent` en hérite, la dépendance était jusqu'ici implicite. Sans effet pour une app qui l'a déjà
 
 ### Changed
 - **Gemspec** : borne Rails `>= 7.2.3, < 8.2` (seul Rails 8.1 est testé) ; URL GitHub retirées des métadonnées (dépôt privé, publication non tranchée) ; e-mail de contact mis à jour ; dépendance de dev `rack-attack` retirée (le rate limiting s'appuie sur `Rails.cache`, pas sur rack-attack)
@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Conseil dangereux du README** : la doc proposait `ActiveStorage::Blob.unattached.purge_later` sans garde-fou, ce qui supprime des envois en cours et des fichiers cités dans du HTML stocké hors Action Text. Remplacé par un renvoi vers le nettoyage sûr ci-dessus
 
 ### Notes
-- **Montée de Rails** : la borne `< 8.2` empêche une app hôte (dont l'app hôte) de passer à Rails 8.2 tant qu'une version de la gem ne la relâche pas. Prévoir une release de la gem avant toute montée majeure de Rails côté app.
+- **Montée de Rails** : la borne `< 8.2` empêche une app hôte de passer à Rails 8.2 tant qu'une version de la gem ne la relâche pas. Prévoir une release de la gem avant toute montée majeure de Rails côté app.
 
 ## [0.8.0] - 2026-10-19
 

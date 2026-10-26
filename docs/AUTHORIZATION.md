@@ -129,7 +129,7 @@ def create?
 end
 ```
 
-#### Exemple complet (inspiré d'l'app hôte)
+#### Exemple complet (rôles métier personnalisés)
 
 ```ruby
 class UploadDNDTemporaryAttachmentPolicy < ApplicationPolicy
@@ -302,7 +302,7 @@ class UploadDNDTemporaryAttachmentPolicy < ApplicationPolicy
 end
 ```
 
-### Exemple 2 : Application avec rôles complexes (style l'app hôte)
+### Exemple 2 : Application avec rôles complexes (style multi-rôles)
 
 ```ruby
 # app/models/user.rb
