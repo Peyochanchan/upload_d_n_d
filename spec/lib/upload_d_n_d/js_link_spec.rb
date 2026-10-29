@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 require 'tmpdir'
+require 'json'
 require 'upload_d_n_d/js_link'
 
 RSpec.describe UploadDND::JsLink do
@@ -10,95 +11,83 @@ RSpec.describe UploadDND::JsLink do
   end
 
   # node_modules/upload_d_n_d dans une fausse racine d'app.
-  def link_path
+  def dest
     File.join(@root, 'node_modules', 'upload_d_n_d')
   end
 
-  # Simule le répertoire d'une version de la gem (gem_dir).
-  def gem_dir(name)
-    File.join(@root, name).tap { |d| FileUtils.mkdir_p(d) }
+  # Fabrique un faux dossier de gem (comme gem_dir) : package.json + les
+  # fichiers de ses exports.
+  def make_source(version:)
+    dir = File.join(@root, "gem-#{version}")
+    FileUtils.mkdir_p(File.join(dir, 'app/javascript/upload_d_n_d/controllers'))
+    FileUtils.mkdir_p(File.join(dir, 'app/assets/stylesheets/upload_d_n_d'))
+    File.write(File.join(dir, 'package.json'), JSON.generate(
+      name: 'upload_d_n_d', version: version, type: 'module',
+      exports: {
+        '.' => './app/javascript/upload_d_n_d/index.js',
+        './controllers/*' => './app/javascript/upload_d_n_d/controllers/*.js',
+        './styles' => { 'style' => './app/assets/stylesheets/upload_d_n_d/application.css' }
+      }
+    ))
+    File.write(File.join(dir, 'app/javascript/upload_d_n_d/index.js'), "// index v#{version}\n")
+    File.write(File.join(dir, 'app/javascript/upload_d_n_d/controllers/uploads_controller.js'), "// uploads\n")
+    File.write(File.join(dir, 'app/assets/stylesheets/upload_d_n_d/application.css'), "/* css */\n")
+    dir
   end
 
-  it 'crée le lien quand node_modules/upload_d_n_d est absent' do
-    target = gem_dir('upload_d_n_d-0.9.3')
-
-    expect(described_class.reconcile(link_path: link_path, target: target)).to eq(:created)
-    expect(File.symlink?(link_path)).to be(true)
-    expect(File.readlink(link_path)).to eq(target)
+  def dest_version
+    JSON.parse(File.read(File.join(dest, 'package.json')))['version']
   end
 
-  it 'est idempotent quand le lien pointe déjà vers la bonne cible' do
-    target = gem_dir('upload_d_n_d-0.9.3')
-    described_class.reconcile(link_path: link_path, target: target)
+  it 'copie package.json et les fichiers des exports quand la destination est absente' do
+    expect(described_class.sync(source: make_source(version: '0.9.4'), dest: dest)).to eq(:created)
 
-    expect(described_class.reconcile(link_path: link_path, target: target)).to eq(:unchanged)
-    expect(File.readlink(link_path)).to eq(target)
+    expect(File.symlink?(dest)).to be(false)
+    expect(File.file?(File.join(dest, 'package.json'))).to be(true)
+    expect(File.file?(File.join(dest, 'app/javascript/upload_d_n_d/index.js'))).to be(true)
+    expect(File.file?(File.join(dest, 'app/javascript/upload_d_n_d/controllers/uploads_controller.js'))).to be(true)
+    expect(File.file?(File.join(dest, 'app/assets/stylesheets/upload_d_n_d/application.css'))).to be(true)
   end
 
-  it 'ne remplace pas un lien qui résout vers la gem via un lien intermédiaire' do
-    target = gem_dir('upload_d_n_d-0.9.3')
-    alias_path = File.join(@root, 'alias')
-    FileUtils.ln_s(target, alias_path)              # alias -> gem
-    FileUtils.mkdir_p(File.dirname(link_path))
-    FileUtils.ln_s(alias_path, link_path)           # node_modules/upload_d_n_d -> alias
+  it 'est idempotent quand la copie est déjà à la bonne version' do
+    src = make_source(version: '0.9.4')
+    described_class.sync(source: src, dest: dest)
 
-    expect(described_class.reconcile(link_path: link_path, target: target)).to eq(:unchanged)
-    expect(File.readlink(link_path)).to eq(alias_path) # non remplacé
+    expect(described_class.sync(source: src, dest: dest)).to eq(:unchanged)
   end
 
-  it 'ne remplace pas un lien à cible relative qui résout vers la gem' do
-    target = gem_dir('upload_d_n_d-0.9.3')
-    FileUtils.mkdir_p(File.dirname(link_path))
-    Dir.chdir(File.dirname(link_path)) do           # cible relative depuis node_modules/
-      File.symlink(File.join('..', 'upload_d_n_d-0.9.3'), 'upload_d_n_d')
-    end
+  it 'rafraîchit la copie lors d\'une montée de version' do
+    described_class.sync(source: make_source(version: '0.9.3'), dest: dest)
 
-    expect(described_class.reconcile(link_path: link_path, target: target)).to eq(:unchanged)
+    expect(described_class.sync(source: make_source(version: '0.9.4'), dest: dest)).to eq(:updated)
+    expect(dest_version).to eq('0.9.4')
   end
 
-  it 'remplace un lien vers une autre version encore présente sur le disque' do
-    old = gem_dir('upload_d_n_d-0.8.0') # ancienne cible toujours présente (cas réel 0.8.0)
-    neu = gem_dir('upload_d_n_d-0.9.3')
-    described_class.reconcile(link_path: link_path, target: old)
+  it 'remplace un ancien lien symbolique (gem <= 0.9.3) par une copie' do
+    gem_dir = make_source(version: '0.9.4')
+    FileUtils.mkdir_p(File.dirname(dest))
+    FileUtils.ln_s(gem_dir, dest)
 
-    expect(described_class.reconcile(link_path: link_path, target: neu)).to eq(:updated)
-    expect(File.readlink(link_path)).to eq(neu)
-    expect(File.directory?(old)).to be(true) # l'ancien dossier de gem n'est pas supprimé
+    expect(described_class.sync(source: gem_dir, dest: dest)).to eq(:updated)
+    expect(File.symlink?(dest)).to be(false)
+    expect(File.directory?(dest)).to be(true)
+    expect(File.file?(File.join(dest, 'package.json'))).to be(true)
   end
 
-  it 'remplace un lien cassé dont la cible a disparu' do
-    old = gem_dir('upload_d_n_d-0.9.2')
-    described_class.reconcile(link_path: link_path, target: old)
-    FileUtils.remove_entry(old)
+  it 'ne touche jamais à un dossier étranger (pas notre package.json)' do
+    FileUtils.mkdir_p(dest)
+    File.write(File.join(dest, 'package.json'), JSON.generate(name: 'autre', version: '1.0.0'))
+    File.write(File.join(dest, 'garde.txt'), 'intact')
 
-    expect(File.symlink?(link_path)).to be(true)
-    expect(File.exist?(link_path)).to be(false) # lien cassé
-
-    neu = gem_dir('upload_d_n_d-0.9.3')
-    expect(described_class.reconcile(link_path: link_path, target: neu)).to eq(:updated)
-    expect(File.readlink(link_path)).to eq(neu)
-  end
-
-  it 'ne touche jamais à un vrai dossier (ex. paquet npm) et signale un conflit' do
-    FileUtils.mkdir_p(link_path)
-    marker = File.join(link_path, 'package.json')
-    File.write(marker, '{"name":"autre"}')
-    target = gem_dir('upload_d_n_d-0.9.3')
-
-    expect(described_class.reconcile(link_path: link_path, target: target)).to eq(:conflict)
-    expect(File.symlink?(link_path)).to be(false)
-    expect(File.directory?(link_path)).to be(true)
-    expect(File.read(marker)).to eq('{"name":"autre"}') # rien supprimé
+    expect(described_class.sync(source: make_source(version: '0.9.4'), dest: dest)).to eq(:conflict)
+    expect(File.read(File.join(dest, 'garde.txt'))).to eq('intact') # rien supprimé
   end
 
   it 'ne touche jamais à un vrai fichier présent à cet emplacement' do
-    FileUtils.mkdir_p(File.dirname(link_path))
-    File.write(link_path, 'contenu')
-    target = gem_dir('upload_d_n_d-0.9.3')
+    FileUtils.mkdir_p(File.dirname(dest))
+    File.write(dest, 'contenu')
 
-    expect(described_class.reconcile(link_path: link_path, target: target)).to eq(:conflict)
-    expect(File.symlink?(link_path)).to be(false)
-    expect(File.file?(link_path)).to be(true)
-    expect(File.read(link_path)).to eq('contenu') # rien supprimé
+    expect(described_class.sync(source: make_source(version: '0.9.4'), dest: dest)).to eq(:conflict)
+    expect(File.read(dest)).to eq('contenu') # rien supprimé
   end
 end

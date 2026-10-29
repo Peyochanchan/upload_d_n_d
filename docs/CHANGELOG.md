@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **`upload_d_n_d:link_js` copie désormais le JS au lieu de créer un lien symbolique** — le JS de la gem importe `@hotwired/stimulus` et `@rails/activestorage`, que l'app hôte fournit dans ses propres `node_modules`. Avec un lien symbolique, le bundler (bun/esbuild) résolvait ces imports depuis le `realpath` du lien (le dossier de la gem, hors de l'app) et ne les trouvait pas — la compilation échouait (y compris à la construction de l'image de déploiement). La tâche copie maintenant `package.json` et les fichiers des `exports` dans `node_modules/upload_d_n_d` (vrai dossier), ce qui laisse la résolution remonter jusqu'aux dépendances de l'app. La copie est rafraîchie quand la version de la gem change ; un dossier ou fichier **non géré par la gem** (ex. paquet npm) n'est jamais supprimé (avertissement). Un ancien lien symbolique (gem ≤ 0.9.3) est remplacé par la copie au premier `rake upload_d_n_d:link_js` (ou `javascript:build`).
+
+### Migration
+- Les apps qui avaient ajouté `NODE_PATH=node_modules` à leur script de build pour contourner le problème en 0.9.3 peuvent **retirer ce réglage** après passage en 0.9.4 : la copie rend la résolution correcte sans configuration côté app.
+
 ## [0.9.3] - 2026-10-29
 
 Correctifs d'empaquetage pour la consommation de la gem via jsbundling (bun/esbuild) et Tailwind. Patch, sans changement d'API.
