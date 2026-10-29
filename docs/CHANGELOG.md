@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Formats `.ods`, `.heic` et `.heif`** ajoutés à la table de correspondance (`MimeTypes`).
+
+### Fixed
+- **Zone de dépôt : extensions affichées au lieu des types MIME bruts** — un format absent de la table (ex. `.ods`, `.heic`) affichait son type MIME complet (`application/vnd.oasis.opendocument.spreadsheet`) sous la zone. `to_extensions` dérive désormais l'extension via Marcel pour tout type non listé ; le type brut n'apparaît qu'en dernier recours (inconnu de la gem et de Marcel).
+
 ## [0.9.1] - 2026-10-29
 
 ### Changed

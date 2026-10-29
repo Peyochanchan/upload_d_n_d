@@ -9,6 +9,8 @@ module UploadDND
       gif: "image/gif",
       webp: "image/webp",
       svg: "image/svg+xml",
+      heic: "image/heic",
+      heif: "image/heif",
       pdf: "application/pdf",
       doc: "application/msword",
       docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -17,6 +19,7 @@ module UploadDND
       ppt: "application/vnd.ms-powerpoint",
       pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
       odt: "application/vnd.oasis.opendocument.text",
+      ods: "application/vnd.oasis.opendocument.spreadsheet",
       txt: "text/plain",
       csv: "text/csv",
       zip: "application/zip"
@@ -53,8 +56,20 @@ module UploadDND
     # @param mime_types [Array<String>] e.g. ["image/jpeg", "image/png"]
     # @return [String] e.g. ".jpg,.jpeg,.png"
     def self.to_extensions(mime_types)
-      Array(mime_types).flat_map { |mime| MIME_TO_EXTENSIONS.fetch(mime) { [ mime ] } }.uniq.join(",")
+      Array(mime_types).flat_map { |mime| extensions_for(mime) }.uniq.join(",")
     end
+
+    # Extensions d'un type MIME : la table de la gem d'abord, puis Marcel pour les
+    # types non listés (ex. .ods, .heic), afin de ne jamais afficher le type brut.
+    # En dernier recours (type inconnu de la gem ET de Marcel), on garde le type
+    # pour que la contrainte ne disparaisse pas de l'attribut `accept`.
+    def self.extensions_for(mime)
+      return MIME_TO_EXTENSIONS[mime] if MIME_TO_EXTENSIONS.key?(mime)
+
+      marcel = Marcel::TYPE_EXTS[mime]
+      marcel.present? ? marcel.map { |ext| ".#{ext}" } : [ mime ]
+    end
+    private_class_method :extensions_for
 
     # Converts the global `accepted_types` setting (extensions and/or MIME
     # types, comma-separated) into MIME strings.
