@@ -9,6 +9,7 @@ require "upload_d_n_d/rejected_blob"
 require "upload_d_n_d/orphan_blobs"
 require "upload_d_n_d/file_validator"
 require "upload_d_n_d/mime_types"
+require "upload_d_n_d/js_link"
 require "upload_d_n_d/uploadable"
 require "upload_d_n_d/controllers/uploadable"
 
