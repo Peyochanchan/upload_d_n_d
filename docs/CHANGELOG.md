@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-10-29
+
+Reconnaissance des formats `.ods`/`.heic`/`.heif` et affichage des extensions (au lieu des types MIME bruts) sous la zone de dépôt. Patch, sans changement d'API.
+
 ### Added
 - **Formats `.ods`, `.heic` et `.heif`** ajoutés à la table de correspondance (`MimeTypes`).
 
@@ -20,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.9.0] - 2026-10-29
 
-Lot post-0.8.0 : nettoyage opt-in des blobs orphelins, CI matricielle avec audit des CVE, et deux correctifs — dont `strict_mime_check` désormais utilisable avec un champ fichier classique. Version mineure, rétrocompatible. **Mise à jour recommandée.** les apps sous Pundit ou CanCanCan détecté automatiquement n'ont qu'à passer leur `tag:` à `v0.9.0` ; le nettoyage des orphelins est opt-in, rien n'est activé sans config.
+Lot post-0.8.0 : nettoyage opt-in des blobs orphelins, CI matricielle avec audit des CVE, et deux correctifs — dont `strict_mime_check` désormais utilisable avec un champ fichier classique. Version mineure, rétrocompatible. **Mise à jour recommandée.** Les apps sous Pundit ou CanCanCan détecté automatiquement n'ont qu'à passer leur `tag:` à `v0.9.0` ; le nettoyage des orphelins est opt-in, rien n'est activé sans config.
 
 ### Added
 - **Nettoyage des blobs orphelins** (`UploadDND::OrphanBlobs`, `UploadDND::PurgeOrphanBlobsJob`, tâche rake `upload_d_n_d:purge_orphans`) : supprime, de façon opt-in, les blobs envoyés par DirectUpload mais jamais rattachés (refus, coupure réseau, onglet fermé). Un blob n'est supprimé que s'il n'a aucun rattachement, est plus vieux que `orphan_blob_min_age` (2 jours par défaut), n'est pas gardé par un fichier temporaire, et n'est **cité dans aucun texte de la base** (colonnes texte et JSON) — par clé du bucket, par `signed_id` ou par sgid ; jamais par le nom de fichier. La rake simule par défaut (`APPLY=1` pour supprimer), le job journalise un rapport par défaut (`apply: true` pour supprimer). Réglages : `orphan_blob_min_age`, `orphan_scan_columns` (liste blanche pour borner la mémoire), `orphan_scan_patterns`, `orphan_scan_excluded_tables`. PostgreSQL requis pour le scan des citations (sinon erreur explicite, jamais de suppression sans ce filet)
