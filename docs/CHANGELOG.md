@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-10-29
+
+### Changed
+- Documentation : clarifications mineures.
+
 ## [0.9.0] - 2026-10-29
 
 Lot post-0.8.0 : nettoyage opt-in des blobs orphelins, CI matricielle avec audit des CVE, et deux correctifs — dont `strict_mime_check` désormais utilisable avec un champ fichier classique. Version mineure, rétrocompatible. **Mise à jour recommandée.** les apps sous Pundit ou CanCanCan détecté automatiquement n'ont qu'à passer leur `tag:` à `v0.9.0` ; le nettoyage des orphelins est opt-in, rien n'est activé sans config.
