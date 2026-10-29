@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **Paquet publié : `package.json` manquant** — la liste de fichiers du gemspec n'incluait pas `package.json`, absent de la gem publiée. Les apps qui compilent leurs assets avec jsbundling (bun/esbuild) et Tailwind ne pouvaient plus résoudre `import "upload_d_n_d"` ni `@import "upload_d_n_d/styles"` via `node_modules/upload_d_n_d` (« Could not resolve "upload_d_n_d" », « Can't resolve 'upload_d_n_d/styles' »). `package.json` est désormais embarqué ; un test construit la gem (`gem build`) et vérifie sa présence ainsi que celle des fichiers déclarés dans ses `exports`.
+- **`upload_d_n_d:link_js` ne mettait pas le lien à jour** — la tâche ne (re)créait le lien `node_modules/upload_d_n_d` que lorsqu'il était absent (`exist?` suit le lien). Lors d'une montée de version, l'ancien lien vers la copie précédente de la gem était conservé ; si l'ancienne cible avait disparu, le lien cassé faisait échouer `ln_s` (lien déjà présent). La tâche compare désormais la cible **résolue** du lien au répertoire de la gem courante (résolution des deux chemins, pour qu'un chemin relatif ou un lien intermédiaire ne déclenche pas un remplacement inutile) et le remplace s'il diffère ou est cassé. Un vrai dossier ou fichier à cet emplacement (ex. paquet installé par npm) n'est **jamais** supprimé : la tâche avertit et le laisse en place. Logique extraite dans `UploadDND::JsLink`, idempotente.
 
 ## [0.9.2] - 2026-10-29
 
