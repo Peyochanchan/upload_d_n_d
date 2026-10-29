@@ -84,6 +84,8 @@ end
 
 The model is the source of truth: the same limits drive the browser checks and the server checks. Options passed to the view helper can only narrow them.
 
+`strict_mime_check: true` sniffs the file's real bytes (Marcel) to catch a spoofed extension. It works both ways: with the gem's dropzone (DirectUpload — the content is read back from storage, where the file already sits) and with a plain Rails `file_field` (the file rides along with the form — the content is read from the pending upload, before it reaches storage). Either way the check runs during model validation, so a spoofed file is never persisted.
+
 Or let the generator print the snippets for you:
 
 ```bash
