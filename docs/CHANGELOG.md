@@ -17,7 +17,7 @@ Lot post-0.8.0 : nettoyage opt-in des blobs orphelins, CI matricielle avec audit
 
 ### Changed
 - **CI matricielle** : la CI teste désormais la plage de Rails déclarée (Ruby 3.2/3.3/3.4 × Rails 7.2/8.0/8.1, en diagonale plus un croisé), avec service PostgreSQL, et ajoute `bundler-audit` (audit des CVE). Dépendances de développement mises à jour pour les correctifs de sécurité (Rails 8.1.4, view_component 3.27, puma 8.0.2) — sans effet pour les apps, qui résolvent leur propre lock
-- **Gemspec** : borne Rails `>= 7.2.3, < 8.2` (seul Rails 8.1 est testé) ; URL GitHub retirées des métadonnées (dépôt privé, publication non tranchée) ; e-mail de contact mis à jour ; dépendance de dev `rack-attack` retirée (le rate limiting s'appuie sur `Rails.cache`, pas sur rack-attack)
+- **Gemspec finalisé pour la publication open source** : borne Rails `>= 7.2.3, < 8.2` (seul Rails 8.1 est testé) ; métadonnées complètes (homepage, `source_code_uri`, `changelog_uri`, `bug_tracker_uri`, MFA requise) pointant vers le dépôt GitHub public ; licence MIT ; e-mail de contact à jour ; dépendance de dev `rack-attack` retirée (le rate limiting s'appuie sur `Rails.cache`, pas sur rack-attack)
 - **La gem embarque désormais son CHANGELOG** (`docs/CHANGELOG.md` ajouté à la liste de fichiers publiée). Nettoyage du dépôt : `node_modules/` n'est plus suivi, le squelette Minitest inutilisé est retiré (la suite est RSpec), `package.json` passe en 0.8.0
 
 ### Fixed
