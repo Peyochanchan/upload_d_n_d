@@ -55,6 +55,8 @@ The installer adds `view_component` and `stimulus-rails` if missing, creates the
 
 Everything else (JS, CSS, components, concerns) is served from the gem: upgrading is a `bundle update`.
 
+With **jsbundling-rails** (bun/esbuild), the `upload_d_n_d:link_js` task copies the gem's JS/CSS into `node_modules/upload_d_n_d` so your bundler can resolve `import "upload_d_n_d"` and `@import "upload_d_n_d/styles"`. It is a real directory (not a symlink), so the gem's own imports of `@hotwired/stimulus` and `@rails/activestorage` resolve against your app's `node_modules`. The task runs automatically on `javascript:build` (so `assets:precompile` at deploy is always up to date). Note: a watch-mode dev server such as `bin/dev` calls the bundler directly and does **not** run the task, so after upgrading the gem run `bin/rails javascript:build` once locally to refresh the copy.
+
 ActiveStorage must be installed (`bin/rails active_storage:install`). With an external S3-like bucket and a strict CSP, serve files same-origin:
 
 ```ruby
