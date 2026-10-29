@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Paquet publié : `package.json` manquant** — la liste de fichiers du gemspec n'incluait pas `package.json`, absent de la gem publiée. Les apps qui compilent leurs assets avec jsbundling (bun/esbuild) et Tailwind ne pouvaient plus résoudre `import "upload_d_n_d"` ni `@import "upload_d_n_d/styles"` via `node_modules/upload_d_n_d` (« Could not resolve "upload_d_n_d" », « Can't resolve 'upload_d_n_d/styles' »). `package.json` est désormais embarqué ; un test construit la gem (`gem build`) et vérifie sa présence ainsi que celle des fichiers déclarés dans ses `exports`.
+
 ## [0.9.2] - 2026-10-29
 
 Reconnaissance des formats `.ods`/`.heic`/`.heif` et affichage des extensions (au lieu des types MIME bruts) sous la zone de dépôt. Patch, sans changement d'API.
