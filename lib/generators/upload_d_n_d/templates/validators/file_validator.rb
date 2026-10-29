@@ -86,10 +86,7 @@ class FileValidator < ActiveModel::EachValidator
 
     begin
       # Marcel analyse le contenu réel du fichier pour détecter son type
-      detected_content_type = Marcel::MimeType.for(
-        file.download,
-        name: file.filename.to_s
-      )
+      detected_content_type = detect_content_type(record, attribute, file)
 
       declared_content_type = file.content_type
 
@@ -119,6 +116,56 @@ class FileValidator < ActiveModel::EachValidator
         :mime_type_detection_failed,
         message: "Impossible de vérifier le type de fichier : #{e.message}"
       )
+    end
+  end
+
+  # Marcel a besoin des octets du fichier. Avec un champ fichier classique, le
+  # fichier part avec le formulaire et n'est envoyé au stockage qu'après le
+  # `save` : à la validation, `file.download` lèverait
+  # `ActiveStorage::FileNotFoundError`. On lit alors la source encore en attente
+  # (`attachment_changes`) sans la consommer pour l'envoi au stockage. Avec un
+  # blob déjà stocké (zone de dépôt), on retombe sur `file.download`.
+  def detect_content_type(record, attribute, file)
+    io = pending_upload_io(record, attribute, file)
+    return Marcel::MimeType.for(file.download, name: file.filename.to_s) unless io
+
+    io.rewind if io.respond_to?(:rewind)
+    Marcel::MimeType.for(io, name: file.filename.to_s)
+  ensure
+    io.rewind if io.respond_to?(:rewind)
+  end
+
+  def pending_upload_io(record, attribute, file)
+    return unless record.respond_to?(:attachment_changes)
+
+    change = record.attachment_changes[attribute.to_s]
+    return unless change
+
+    blob = file.respond_to?(:blob) ? file.blob : file
+    attachable = pending_attachables_by_key(change)[blob&.key]
+    attachable && readable_io(attachable)
+  end
+
+  # { blob.key => attachable } des sources non encore stockées. has_one :
+  # CreateOne (blob + attachable). has_many : CreateMany (blobs + attachables,
+  # même ordre). La `key` est fiable avant le save (l'id du blob est encore nil).
+  def pending_attachables_by_key(change)
+    if change.respond_to?(:blobs) && change.respond_to?(:attachables)
+      change.blobs.map(&:key).zip(change.attachables).to_h
+    elsif change.respond_to?(:blob) && change.respond_to?(:attachable)
+      { change.blob&.key => change.attachable }
+    else
+      {}
+    end
+  end
+
+  def readable_io(attachable)
+    if attachable.respond_to?(:tempfile) # UploadedFile (ActionDispatch / Rack::Test)
+      attachable.tempfile
+    elsif attachable.is_a?(Hash)
+      attachable[:io]
+    elsif attachable.respond_to?(:read) # IO, File, StringIO...
+      attachable
     end
   end
 end

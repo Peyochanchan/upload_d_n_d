@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **La gem embarque désormais son CHANGELOG** (`docs/CHANGELOG.md` ajouté à la liste de fichiers publiée). Nettoyage du dépôt : `node_modules/` n'est plus suivi, le squelette Minitest inutilisé est retiré (la suite est RSpec), `package.json` passe en 0.8.0
 
 ### Fixed
+- **`strict_mime_check` avec un champ fichier classique** : avec un `file_field` ordinaire (le fichier part avec le formulaire, envoyé au stockage seulement après le `save`), la vérification anti-spoofing lisait le fichier depuis le stockage pendant la validation, donc avant son envoi. Le fichier n'y était pas encore → `ActiveStorage::FileNotFoundError`, traduit en « Impossible de vérifier le type de fichier » : tous les fichiers refusés. Le validateur lit désormais la source encore en attente (`attachment_changes`) quand le blob n'est pas encore stocké, et retombe sur le stockage sinon (zone de dépôt). Gère `has_one_attached` et `has_many_attached`. Aucun changement pour la zone de dépôt, déjà fonctionnelle. Même correction portée au template du générateur
 - **Conseil dangereux du README** : la doc proposait `ActiveStorage::Blob.unattached.purge_later` sans garde-fou, ce qui supprime des envois en cours et des fichiers cités dans du HTML stocké hors Action Text. Remplacé par un renvoi vers le nettoyage sûr ci-dessus
 
 ### Notes

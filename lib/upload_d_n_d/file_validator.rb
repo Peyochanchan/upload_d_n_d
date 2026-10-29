@@ -62,11 +62,7 @@ module UploadDND
     def validate_mime_type(record, attribute, file)
       return unless options[:content_type].present?
 
-      detected_content_type = Marcel::MimeType.for(
-        file.download,
-        name: file.filename.to_s
-      )
-
+      detected_content_type = detect_content_type(record, attribute, file)
       declared_content_type = file.content_type
 
       unless detected_content_type.in?(Array(options[:content_type]))
@@ -95,6 +91,63 @@ module UploadDND
         :mime_type_detection_failed,
         message: I18n.t("upload_d_n_d.errors.mime_detection_failed")
       )
+    end
+
+    # Marcel a besoin des octets du fichier. Avec la zone de dépôt, le blob est
+    # déjà sur le stockage et `file.download` suffit. Avec un champ fichier
+    # classique, le fichier part avec le formulaire et n'est envoyé au stockage
+    # qu'après le `save` : à la validation, `file.download` lèverait
+    # `ActiveStorage::FileNotFoundError`. On lit alors la source encore en
+    # attente (`attachment_changes`), sans la consommer pour l'envoi au stockage.
+    def detect_content_type(record, attribute, file)
+      io = pending_upload_io(record, attribute, file)
+      return Marcel::MimeType.for(file.download, name: file.filename.to_s) unless io
+
+      io.rewind if io.respond_to?(:rewind)
+      Marcel::MimeType.for(io, name: file.filename.to_s)
+    ensure
+      io.rewind if io.respond_to?(:rewind)
+    end
+
+    # IO de la source non encore stockée pour ce fichier, ou nil si le blob est
+    # déjà sur le stockage (zone de dépôt, signed_id, blob existant).
+    def pending_upload_io(record, attribute, file)
+      return unless record.respond_to?(:attachment_changes)
+
+      change = record.attachment_changes[attribute.to_s]
+      return unless change
+
+      blob = file.respond_to?(:blob) ? file.blob : file
+      attachable = pending_attachables_by_key(change)[blob&.key]
+      attachable && readable_io(attachable)
+    end
+
+    # { blob.key => attachable } des sources non encore stockées. La `key` est
+    # fiable même avant le save (l'id du blob est encore nil, donc pas de
+    # comparaison par id). has_one : CreateOne (blob + attachable). has_many :
+    # CreateMany (blobs + attachables, même ordre). Une suppression ne crée rien.
+    def pending_attachables_by_key(change)
+      if change.respond_to?(:blobs) && change.respond_to?(:attachables)
+        change.blobs.map(&:key).zip(change.attachables).to_h
+      elsif change.respond_to?(:blob) && change.respond_to?(:attachable)
+        { change.blob&.key => change.attachable }
+      else
+        {}
+      end
+    end
+
+    # Extrait un IO des sources d'upload gérées. Les autres (signed_id, blob
+    # déjà stocké) renvoient nil pour retomber sur `file.download`. Duck typing
+    # volontaire : `Rack::Test::UploadedFile` n'est pas chargé en production, on
+    # ne référence donc pas la constante.
+    def readable_io(attachable)
+      if attachable.respond_to?(:tempfile) # UploadedFile (ActionDispatch / Rack::Test)
+        attachable.tempfile
+      elsif attachable.is_a?(Hash)
+        attachable[:io]
+      elsif attachable.respond_to?(:read) # IO, File, StringIO...
+        attachable
+      end
     end
   end
 end
