@@ -58,11 +58,15 @@ RSpec.describe UploadDND::AttachmentsController, type: :controller do
       expect(blob_exists?).to be false
     end
 
-    it 'record not found (404)' do
+    # Sécurité (F5) : le record n'étant pas localisé, l'autorisation de purge
+    # n'est jamais posée — un blob récent non rattaché n'est pas purgé sur un
+    # 404 (il relève du nettoyage des orphelins), au lieu d'être purgeable par
+    # toute requête vouée à l'échec.
+    it 'record not found (404): the blob is kept, not purged' do
       post_blob(record_gid: 'gid://dummy/User/99999')
 
       expect(response).to have_http_status(:not_found)
-      expect(blob_exists?).to be false
+      expect(blob_exists?).to be true
     end
 
     it 'record invalid raised on save (422)' do
@@ -148,6 +152,16 @@ RSpec.describe UploadDND::AttachmentsController, type: :controller do
       expect(response).to have_http_status(:forbidden)
       expect(blob_exists?).to be true
     end
+  end
+
+  # F7 : find_signed renvoie nil (il ne lève pas) sur signature invalide ;
+  # la requête doit être refusée en 401, pas planter en 500.
+  it 'invalid blob signature is refused (401), not a 500' do
+    bogus = 'A' * 40 # format valide, signature invalide
+
+    post :create, params: { signed_blob_id: bogus, attribute_name: 'avatar', record_gid: user.to_global_id.to_s }, format: :json
+
+    expect(response).to have_http_status(:unauthorized)
   end
 
   it 'accepted upload keeps the blob and enqueues no purge' do

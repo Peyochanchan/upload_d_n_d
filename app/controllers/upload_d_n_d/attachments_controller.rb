@@ -207,10 +207,13 @@ module UploadDND
     # === Autorisation ===
 
     # Policy générique ; la policy du record est vérifiée ensuite
-    # (authorize_record_upload!), une fois le record localisé.
+    # (authorize_record_upload!), une fois le record localisé. On ne pose PAS
+    # l'autorisation de purge ici : tant que le record n'est pas localisé et
+    # autorisé, une requête en échec (record absent/introuvable, 400/404) ne
+    # doit pas purger le blob — sinon un utilisateur ayant le droit générique
+    # pourrait purger un blob récent non rattaché sans aucun contrôle de record.
     def authorize_upload!
       authorize_with_adapter!(:upload_d_n_d_attachment, :create)
-      grant_upload_authorization!
     rescue UploadDND::Authorization::Denied
       render_forbidden
     end

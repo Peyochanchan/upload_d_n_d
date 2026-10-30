@@ -113,6 +113,12 @@ module UploadDND
 
     def find_blob
       @blob = ActiveStorage::Blob.find_signed(params[:signed_blob_id])
+      return if @blob
+
+      # find_signed renvoie nil (sans lever) sur signature invalide ou blob
+      # supprimé : sans cette garde, @blob nil provoquait un 500 plus bas.
+      render_error(I18n.t("upload_d_n_d.errors.invalid_blob_signature"), :unauthorized)
+      nil
     rescue ActiveSupport::MessageVerifier::InvalidSignature
       render_error(I18n.t("upload_d_n_d.errors.invalid_blob_signature"), :unauthorized)
       nil
