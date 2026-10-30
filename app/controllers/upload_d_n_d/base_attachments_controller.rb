@@ -34,8 +34,9 @@ module UploadDND
     # convention Pundit de l'app hôte. On marque les vérifications Pundit comme
     # satisfaites : les after_action verify_* de l'hôte passent alors, quel que
     # soit leur nom (certaines apps les regroupent dans un callback au nom
-    # custom) — sans masquer d'erreur ni dépendre du nom du callback.
-    before_action :satisfy_pundit_verifications if defined?(::Pundit)
+    # custom) — sans masquer d'erreur ni dépendre du nom du callback. Enregistré
+    # inconditionnellement (la présence de Pundit est vérifiée à l'exécution).
+    before_action :satisfy_pundit_verifications
 
     # Gestion des erreurs
     # IMPORTANT: rescue_from utilise le "dernier match" -> on déclare StandardError en premier
@@ -229,8 +230,11 @@ module UploadDND
     # applique sa propre autorisation (adaptateur) : ces marqueurs n'affaiblissent
     # rien, ils neutralisent seulement l'assertion de dev de l'hôte.
     def satisfy_pundit_verifications
-      skip_policy_scope if respond_to?(:skip_policy_scope)
-      skip_authorization if respond_to?(:skip_authorization)
+      # skip_policy_scope / skip_authorization sont PROTECTED dans Pundit : le
+      # second argument (include_all) est indispensable, sinon respond_to? renvoie
+      # false et les marqueurs ne sont jamais posés.
+      skip_policy_scope if respond_to?(:skip_policy_scope, true)
+      skip_authorization if respond_to?(:skip_authorization, true)
     end
 
     def render_forbidden

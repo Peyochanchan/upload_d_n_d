@@ -378,4 +378,33 @@ RSpec.describe UploadDND::BaseAttachmentsController, type: :controller do
       expect(response).to have_http_status(:ok)
     end
   end
+
+  # Le moteur satisfait les vérifications Pundit de l'app hôte via les marqueurs
+  # (skip_policy_scope / skip_authorization), PROTECTED dans Pundit, et quel que
+  # soit le nom de l'after_action qui les regroupe. On prouve que ça passe par le
+  # marqueur (handle_error N'EST PAS appelé) et non par la garde performed?.
+  describe 'satisfies host Pundit verifications via markers' do
+    controller(UploadDND::TemporaryAttachmentsController) do
+      after_action :enforce_pundit_checks, only: :index
+
+      protected
+
+      # Mimique Pundit : méthodes PROTECTED qui posent les marqueurs.
+      def skip_policy_scope = @_policy_scoped = true
+      def skip_authorization = @_authorized = true
+
+      # after_action au nom CUSTOM qui lève si les marqueurs ne sont pas posés.
+      def enforce_pundit_checks
+        raise "Pundit scope/authorization not performed" unless @_policy_scoped && @_authorized
+      end
+    end
+
+    it 'calls the markers (not via the performed? fallback)' do
+      expect(controller).not_to receive(:handle_error)
+
+      get :index, params: { attribute_name: 'documents' }
+
+      expect(response).to have_http_status(:ok)
+    end
+  end
 end
