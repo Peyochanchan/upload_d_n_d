@@ -16,9 +16,9 @@ RSpec.describe UploadDND::TemporaryAttachmentsController, type: :controller do
     ActiveStorage::Blob.create_and_upload!(io: StringIO.new(data), filename: filename, content_type: content_type, identify: false)
   end
 
-  def post_blob(blob, attribute_name: 'documents')
+  def post_blob(blob, model: User, attribute_name: :documents)
     perform_enqueued_jobs do
-      post :create, params: { signed_blob_id: blob.signed_id, attribute_name: attribute_name }, format: :json
+      post :create, params: { signed_blob_id: blob.signed_id, target: temp_target_for(model, attribute_name) }, format: :json
     end
   end
 
@@ -213,13 +213,13 @@ RSpec.describe UploadDND::TemporaryAttachmentsController, type: :controller do
       expect(blob_exists?(blob)).to be true
     end
 
-    it 'policy not defined (fail-closed, 500)' do
+    it 'policy not defined (fail-closed, 403) keeps the blob' do
       controller.singleton_class.define_method(:authorize) { |*| raise Pundit::NotDefinedError }
       blob = upload
 
       post_blob(blob)
 
-      expect(response).to have_http_status(:internal_server_error)
+      expect(response).to have_http_status(:forbidden)
       expect(blob_exists?(blob)).to be true
     end
   end
@@ -239,7 +239,7 @@ RSpec.describe UploadDND::TemporaryAttachmentsController, type: :controller do
     blob = upload
 
     expect {
-      post :create, params: { signed_blob_id: blob.signed_id, attribute_name: 'documents' }, format: :json
+      post :create, params: { signed_blob_id: blob.signed_id, target: temp_target_for(User, :documents) }, format: :json
     }.not_to have_enqueued_job(UploadDND::PurgeRejectedBlobJob)
 
     expect(response).to have_http_status(:ok)

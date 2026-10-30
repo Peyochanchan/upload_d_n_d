@@ -11,7 +11,10 @@ module UploadDND
   # - Helpers de rendu (Turbo Streams, JSON, HTML)
   # - Sécurité (CSRF, validation de signature, sanitisation)
   # - Rate limiting (contrôle du taux de requêtes)
-  class BaseAttachmentsController < ActionController::Base
+  # Contrôleur parent configurable (config.parent_controller) : par défaut
+  # ActionController::Base (isolé), ou "ApplicationController" pour hériter des
+  # hooks d'authentification/autorisation/multi-tenant de l'app hôte (F6).
+  class BaseAttachmentsController < UploadDND.configuration.parent_controller.constantize
     # Inclure Pundit si disponible
     include Pundit::Authorization if defined?(Pundit)
 
@@ -27,6 +30,14 @@ module UploadDND
     # Authentification (si disponible dans l'app hôte)
     before_action :authenticate_user_if_available!
 
+    # Le moteur fait sa propre autorisation (port adaptateur), pas via la
+    # convention Pundit de l'app hôte. On marque les vérifications Pundit comme
+    # satisfaites : les after_action verify_* de l'hôte passent alors, quel que
+    # soit leur nom (certaines apps les regroupent dans un callback au nom
+    # custom) — sans masquer d'erreur ni dépendre du nom du callback. Enregistré
+    # inconditionnellement (la présence de Pundit est vérifiée à l'exécution).
+    before_action :satisfy_pundit_verifications
+
     # Gestion des erreurs
     # IMPORTANT: rescue_from utilise le "dernier match" -> on déclare StandardError en premier
     # pour laisser les handlers spécifiques (RecordNotFound, etc.) prendre le dessus.
@@ -38,6 +49,8 @@ module UploadDND
     before_action :validate_params, only: [ :create ]
     before_action :validate_signed_blob_id_format, only: [ :create ]
     before_action :find_blob, only: [ :create ]
+    # find_target est enregistré par chaque sous-classe (actions distinctes) :
+    # le re-déclarer ici puis dans une sous-classe écraserait ses conditions.
 
     # Déclaré après find_blob (@blob connu) et avant les before_action des
     # sous-classes (autorisation, contraintes), qu'il englobe.
@@ -99,16 +112,10 @@ module UploadDND
     end
 
     def validate_params
-      unless params[:signed_blob_id].present? && params[:attribute_name].present?
-        render_error(I18n.t("upload_d_n_d.errors.missing_params"), :bad_request)
-        return
-      end
+      return if params[:signed_blob_id].present? && params[:target].present?
 
-      # Validation du nom d'attribut (alphanumeric + underscore uniquement)
-      unless params[:attribute_name].match?(ATTRIBUTE_NAME_FORMAT)
-        render_error(I18n.t("upload_d_n_d.errors.invalid_attribute_name"), :bad_request)
-        nil
-      end
+      render_error(I18n.t("upload_d_n_d.errors.missing_params"), :bad_request)
+      nil
     end
 
     def find_blob
@@ -121,6 +128,15 @@ module UploadDND
       nil
     rescue ActiveSupport::MessageVerifier::InvalidSignature
       render_error(I18n.t("upload_d_n_d.errors.invalid_blob_signature"), :unauthorized)
+      nil
+    end
+
+    # Vérifie et décode la cible signée (remplace les record_gid/attribute_name
+    # bruts du client). Toute cible absente ou invalide est refusée.
+    def find_target
+      @target = UploadDND::SignedTarget.verify(params[:target])
+    rescue UploadDND::SignedTarget::Invalid
+      render_error(I18n.t("upload_d_n_d.errors.invalid_field_reference"), :bad_request)
       nil
     end
 
@@ -151,6 +167,10 @@ module UploadDND
       Rails.logger.error "UploadDND Error: #{exception.class} - #{exception.message}"
       Rails.logger.error exception.backtrace.join("\n")
 
+      # Si la réponse est déjà rendue (ex. un after_action qui lève après coup),
+      # ne pas re-rendre : cela provoquerait un DoubleRenderError.
+      return if performed?
+
       render_error(I18n.t("upload_d_n_d.errors.upload_error"), :internal_server_error)
     end
 
@@ -170,16 +190,17 @@ module UploadDND
 
     # === Helpers d'authentification ===
 
-    def current_user
-      # Tente de récupérer current_user depuis l'application hôte
-      # En utilisant warden (Devise)
-      if defined?(Warden) && request.env["warden"]
-        request.env["warden"].user
-      elsif respond_to?(:super, true)
-        super
-      else
-        nil
-      end
+    # Public : l'app hôte vérifie souvent `respond_to?(:current_user)` (sans
+    # include_all) dans ses before_action / pour alimenter Current.user ; une
+    # méthode protected y répondrait faux. Priorité au `current_user` fourni par
+    # le parent (parent_controller = "ApplicationController"), repli Warden sinon.
+    # NB : `defined?(super)` teste la présence d'une méthode parente (et non
+    # `respond_to?(:super)`, qui cherchait à tort une méthode nommée :super).
+    public def current_user
+      return super if defined?(super)
+      return request.env["warden"].user if defined?(Warden) && request.env["warden"]
+
+      nil
     end
 
     def authenticate_user_if_available!
@@ -199,8 +220,21 @@ module UploadDND
 
     # Délègue au port d'autorisation (UploadDND::Authorization) : lève
     # Denied, RuleMissing ou ConfigurationError. Fail-closed sans adaptateur.
-    def authorize_with_adapter!(subject, action)
-      UploadDND::Authorization.authorize!(self, subject, action)
+    def authorize_with_adapter!(subject, action, namespace: nil)
+      UploadDND::Authorization.authorize!(self, subject, action, namespace: namespace)
+    end
+
+    # Marque la requête comme « vérifiée » côté Pundit (API officielle), pour que
+    # les after_action verify_authorized / verify_policy_scoped de l'app hôte
+    # passent, indépendamment du nom du callback qui les appelle. Le moteur
+    # applique sa propre autorisation (adaptateur) : ces marqueurs n'affaiblissent
+    # rien, ils neutralisent seulement l'assertion de dev de l'hôte.
+    def satisfy_pundit_verifications
+      # skip_policy_scope / skip_authorization sont PROTECTED dans Pundit : le
+      # second argument (include_all) est indispensable, sinon respond_to? renvoie
+      # false et les marqueurs ne sont jamais posés.
+      skip_policy_scope if respond_to?(:skip_policy_scope, true)
+      skip_authorization if respond_to?(:skip_authorization, true)
     end
 
     def render_forbidden

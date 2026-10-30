@@ -23,7 +23,7 @@
             </div>
           </div>
 
-          <% delete_url = udnd_remove_file_url(record, attachment, attribute_name) %>
+          <% delete_url = udnd_remove_file_url(record, attachment, attribute_name, namespace: local_assigns[:namespace]) %>
 
           <div class="udnd-file-actions">
             <%# Bouton de prévisualisation (images et PDFs uniquement) %>

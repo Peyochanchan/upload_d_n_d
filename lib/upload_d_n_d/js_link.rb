@@ -37,9 +37,9 @@ module UploadDND
         :updated
       elsif File.directory?(dest)
         return :conflict unless ours?(dest) # dossier étranger : on n'y touche jamais
-        return :unchanged if same_version?(source, dest)
+        return :unchanged if up_to_date?(source, dest)
 
-        replace(source, dest) # notre copie, version périmée
+        replace(source, dest) # notre copie, contenu périmé
         :updated
       elsif File.exist?(dest)
         :conflict # fichier étranger
@@ -58,11 +58,16 @@ module UploadDND
     end
     private_class_method :ours?
 
-    def same_version?(source, dest)
-      read_json(File.join(source, "package.json"))["version"] ==
-        read_json(File.join(dest, "package.json"))["version"]
+    # Compare le CONTENU (pas seulement la version du package.json) : une gem
+    # branchée en `path:`/`git:` peut garder la même version tout en changeant le
+    # JS. La copie est à jour si chaque fichier attendu existe et est identique.
+    def up_to_date?(source, dest)
+      package_files(source).all? do |rel|
+        target = File.join(dest, rel)
+        File.file?(target) && FileUtils.identical?(File.join(source, rel), target)
+      end
     end
-    private_class_method :same_version?
+    private_class_method :up_to_date?
 
     def replace(source, dest)
       FileUtils.remove_entry(dest)
@@ -83,7 +88,7 @@ module UploadDND
     private_class_method :copy
 
     def package_files(source)
-      exports = read_json(File.join(source, "package.json"))["exports"] || {}
+      pkg = read_json(File.join(source, "package.json"))
       targets = []
       collect = lambda do |value|
         case value
@@ -91,7 +96,10 @@ module UploadDND
         when Hash then value.each_value(&collect)
         end
       end
-      exports.each_value(&collect)
+      (pkg["exports"] || {}).each_value(&collect)
+      # Le champ `style` de premier niveau (postcss-import / Tailwind 3) n'est pas
+      # dans `exports` : on l'ajoute pour copier aussi le styles.css racine.
+      targets << pkg["style"] if pkg["style"]
 
       files = [ "package.json" ]
       targets.each do |target|

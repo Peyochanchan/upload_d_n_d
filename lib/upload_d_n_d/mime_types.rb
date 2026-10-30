@@ -34,6 +34,13 @@ module UploadDND
       (hash[mime] ||= []) << ".#{ext}"
     end.transform_values(&:freeze).freeze
 
+    # Types MIME non standard mais courants, normalisés vers leur forme standard
+    # pour que le libellé affiche des extensions et non le type brut.
+    MIME_SYNONYMS = {
+      "image/jpg" => "image/jpeg",
+      "image/pjpeg" => "image/jpeg"
+    }.freeze
+
     # Converts an array of symbols (extensions) and/or MIME strings into MIME strings.
     #
     # @param types [Array<Symbol, String>] e.g. [:jpg, :png, "application/pdf"]
@@ -64,6 +71,7 @@ module UploadDND
     # En dernier recours (type inconnu de la gem ET de Marcel), on garde le type
     # pour que la contrainte ne disparaisse pas de l'attribut `accept`.
     def self.extensions_for(mime)
+      mime = MIME_SYNONYMS.fetch(mime, mime)
       return MIME_TO_EXTENSIONS[mime] if MIME_TO_EXTENSIONS.key?(mime)
 
       marcel = Marcel::TYPE_EXTS[mime]

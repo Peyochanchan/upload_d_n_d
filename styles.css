@@ -1,0 +1,4 @@
+/* Point d'entrée CSS pour les bundlers (Tailwind 3/postcss-import, esbuild, bun).
+   @import "upload_d_n_d/styles";  →  résout ce fichier, qui ré-importe le CSS
+   réel (source unique, servie aussi par Sprockets via app/assets). */
+@import "./app/assets/stylesheets/upload_d_n_d/application.css";

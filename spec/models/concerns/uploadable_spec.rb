@@ -120,7 +120,7 @@ RSpec.describe UploadDND::Uploadable do
       expect(UploadDND::TemporaryAttachment.where(session_id: session_id).count).to eq(0)
     end
 
-    it "ignore les temporary_attachments dont l'attribut n'existe pas sur le record" do
+    it "ne transfère pas un temporaire d'attribut non uploadable et le laisse (autre onglet)" do
       session_id = SecureRandom.uuid
       blob = create_blob(filename: "doc.pdf", content_type: "application/pdf")
 
@@ -130,7 +130,9 @@ RSpec.describe UploadDND::Uploadable do
       record.temp_upload_session_id = session_id
       record.save!
 
-      expect(UploadDND::TemporaryAttachment.where(session_id: session_id).count).to eq(0)
+      # Non transféré, mais PAS détruit (option b) : peut appartenir à un autre
+      # formulaire de la même session ; le job d'expiration le nettoiera.
+      expect(UploadDND::TemporaryAttachment.where(session_id: session_id).count).to eq(1)
     end
 
     # SÉCURITÉ : attribute_name du temporaire vient du client.
@@ -145,7 +147,8 @@ RSpec.describe UploadDND::Uploadable do
       record.save!
 
       expect(UploadableUser.exists?(record.id)).to be true
-      expect(UploadDND::TemporaryAttachment.where(session_id: session_id).count).to eq(0)
+      # 'destroy' n'est pas uploadable : non transféré, laissé (non détruit).
+      expect(UploadDND::TemporaryAttachment.where(session_id: session_id).count).to eq(1)
     end
   end
 

@@ -13,16 +13,15 @@ module UploadDND
     # remove_file). Nécessite une route polymorphique — voir README,
     # section "Records imbriqués". Point d'extension : redéfinissez cette
     # méthode dans le ApplicationHelper de votre app.
-    def udnd_remove_file_url(record, attachment, attribute_name)
+    def udnd_remove_file_url(record, attachment, attribute_name, namespace: nil)
       if UploadDND.configuration.delete_route == :host
         query = { file_id: attachment.id, attribute_name: attribute_name }.to_query
         "#{udnd_record_path(record)}/remove_file?#{query}"
       else
-        UploadDND::Engine.routes.url_helpers.attachment_path(
-          attachment.id,
-          record_gid: record.to_global_id.to_s,
-          attribute_name: attribute_name
-        )
+        # Jeton régénéré côté serveur : il survit aux re-rendus Turbo Stream du
+        # partial (les boutons de suppression portent toujours une cible valide).
+        token = UploadDND::SignedTarget.for(record, attribute_name, namespace: namespace)
+        UploadDND::Engine.routes.url_helpers.attachment_path(attachment.id, target: token)
       end
     end
 

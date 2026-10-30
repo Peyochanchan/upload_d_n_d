@@ -9,6 +9,8 @@ RSpec.describe UploadDND::BaseAttachmentsController, type: :controller do
   routes { UploadDND::Engine.routes }
 
   let(:session_id) { SecureRandom.uuid }
+  # Cible temporaire valide (le contrôleur testé est TemporaryAttachmentsController).
+  let(:valid_target) { temp_target_for(User, :documents) }
 
   before do
     UploadDND.configure do |config|
@@ -136,7 +138,7 @@ RSpec.describe UploadDND::BaseAttachmentsController, type: :controller do
 
       post :create, params: {
         signed_blob_id: blob.signed_id,
-        attribute_name: 'documents'
+        target: valid_target
       }, format: :turbo_stream
 
       expect(response.content_type).to include('text/vnd.turbo-stream.html')
@@ -157,7 +159,7 @@ RSpec.describe UploadDND::BaseAttachmentsController, type: :controller do
     it 'accepts valid signed_blob_id' do
       post :create, params: {
         signed_blob_id: blob.signed_id,
-        attribute_name: 'documents'
+        target: valid_target
       }, format: :json
 
       expect(response).to have_http_status(:ok)
@@ -166,7 +168,7 @@ RSpec.describe UploadDND::BaseAttachmentsController, type: :controller do
     it 'rejects signed_blob_id that is too short' do
       post :create, params: {
         signed_blob_id: 'short',
-        attribute_name: 'documents'
+        target: valid_target
       }, format: :json
 
       expect(response).to have_http_status(:unauthorized)
@@ -176,7 +178,7 @@ RSpec.describe UploadDND::BaseAttachmentsController, type: :controller do
     it 'rejects signed_blob_id with invalid characters' do
       post :create, params: {
         signed_blob_id: 'a' * 25 + '<script>',
-        attribute_name: 'documents'
+        target: valid_target
       }, format: :json
 
       expect(response).to have_http_status(:unauthorized)
@@ -185,7 +187,7 @@ RSpec.describe UploadDND::BaseAttachmentsController, type: :controller do
     it 'rejects non-string signed_blob_id' do
       post :create, params: {
         signed_blob_id: 12345,
-        attribute_name: 'documents'
+        target: valid_target
       }, format: :json
 
       expect(response).to have_http_status(:unauthorized)
@@ -196,42 +198,26 @@ RSpec.describe UploadDND::BaseAttachmentsController, type: :controller do
     let(:blob) { ActiveStorage::Blob.create_and_upload!(io: StringIO.new("test"), filename: 'test.txt') }
 
     it 'rejects missing signed_blob_id' do
-      post :create, params: { attribute_name: 'documents' }, format: :json
+      post :create, params: { target: valid_target }, format: :json
 
       expect(response).to have_http_status(:bad_request)
       expect(JSON.parse(response.body)['error']).to include('manquants')
     end
 
-    it 'rejects missing attribute_name' do
+    it 'rejects missing target' do
       post :create, params: { signed_blob_id: blob.signed_id }, format: :json
 
       expect(response).to have_http_status(:bad_request)
     end
 
-    it 'rejects invalid attribute_name format (uppercase)' do
-      post :create, params: {
-        signed_blob_id: blob.signed_id,
-        attribute_name: 'Documents'
-      }, format: :json
-
-      expect(response).to have_http_status(:bad_request)
-      expect(JSON.parse(response.body)['error']).to include('invalide')
-    end
-
-    it 'rejects invalid attribute_name format (special chars)' do
-      post :create, params: {
-        signed_blob_id: blob.signed_id,
-        attribute_name: 'doc-uments'
-      }, format: :json
+    it 'rejects a forged / invalid target' do
+      post :create, params: { signed_blob_id: blob.signed_id, target: 'forged.token' }, format: :json
 
       expect(response).to have_http_status(:bad_request)
     end
 
-    it 'accepts valid snake_case attribute_name' do
-      post :create, params: {
-        signed_blob_id: blob.signed_id,
-        attribute_name: 'my_documents_2024'
-      }, format: :json
+    it 'accepts a valid signed target' do
+      post :create, params: { signed_blob_id: blob.signed_id, target: valid_target }, format: :json
 
       expect(response).to have_http_status(:ok)
     end
@@ -249,7 +235,7 @@ RSpec.describe UploadDND::BaseAttachmentsController, type: :controller do
 
         post :create, params: {
           signed_blob_id: blob.signed_id,
-          attribute_name: 'documents'
+          target: valid_target
         }, format: :json
 
         expect(response).to have_http_status(:not_found)
@@ -264,7 +250,7 @@ RSpec.describe UploadDND::BaseAttachmentsController, type: :controller do
 
         post :create, params: {
           signed_blob_id: blob.signed_id,
-          attribute_name: 'documents'
+          target: valid_target
         }, format: :json
 
         expect(response).to have_http_status(:unprocessable_entity)
@@ -278,7 +264,7 @@ RSpec.describe UploadDND::BaseAttachmentsController, type: :controller do
 
         post :create, params: {
           signed_blob_id: blob.signed_id,
-          attribute_name: 'documents'
+          target: valid_target
         }, format: :json
 
         expect(response).to have_http_status(:bad_request)
@@ -295,7 +281,7 @@ RSpec.describe UploadDND::BaseAttachmentsController, type: :controller do
 
         post :create, params: {
           signed_blob_id: blob.signed_id,
-          attribute_name: 'documents'
+          target: valid_target
         }, format: :json
 
         expect(response).to have_http_status(:internal_server_error)
@@ -318,7 +304,7 @@ RSpec.describe UploadDND::BaseAttachmentsController, type: :controller do
         blob = ActiveStorage::Blob.create_and_upload!(io: StringIO.new("test"), filename: 'test.txt')
         post :create, params: {
           signed_blob_id: blob.signed_id,
-          attribute_name: 'documents'
+          target: valid_target
         }, format: :json
 
         expect(response).to have_http_status(:unauthorized)
@@ -332,7 +318,7 @@ RSpec.describe UploadDND::BaseAttachmentsController, type: :controller do
         blob = ActiveStorage::Blob.create_and_upload!(io: StringIO.new("test"), filename: 'test.txt')
         post :create, params: {
           signed_blob_id: blob.signed_id,
-          attribute_name: 'documents'
+          target: valid_target
         }, format: :json
 
         expect(response).to have_http_status(:ok)
@@ -344,7 +330,7 @@ RSpec.describe UploadDND::BaseAttachmentsController, type: :controller do
         blob = ActiveStorage::Blob.create_and_upload!(io: StringIO.new("test"), filename: 'test.txt')
         post :create, params: {
           signed_blob_id: blob.signed_id,
-          attribute_name: 'documents'
+          target: valid_target
         }, format: :json
 
         expect(response).to have_http_status(:ok)
@@ -360,9 +346,65 @@ RSpec.describe UploadDND::BaseAttachmentsController, type: :controller do
       UploadDND.configuration.authorization_adapter = :pundit
       expect(defined?(Pundit)).to be_nil
 
-      post :create, params: { signed_blob_id: blob.signed_id, attribute_name: 'documents' }, format: :json
+      post :create, params: { signed_blob_id: blob.signed_id, target: valid_target }, format: :json
 
       expect(response).to have_http_status(:internal_server_error)
+    end
+  end
+
+  # F6 : current_user doit être public pour que l'app hôte le détecte via
+  # respond_to? (ses before_action / Current.user) quand parent_controller est
+  # "ApplicationController".
+  describe '#current_user visibility' do
+    it 'is public' do
+      expect(controller.respond_to?(:current_user)).to be(true)
+    end
+  end
+
+  # Un after_action de l'app hôte (ex. Pundit verify_policy_scoped) qui lève
+  # APRÈS le rendu ne doit pas provoquer de DoubleRenderError : handle_error
+  # garde sur performed?.
+  describe 'handle_error guards against double render' do
+    controller(UploadDND::TemporaryAttachmentsController) do
+      after_action :explode, only: :index
+      def explode = raise(StandardError, "after-action boom")
+    end
+
+    it 'keeps the first response instead of rendering twice' do
+      expect {
+        get :index, params: { attribute_name: 'documents' }
+      }.not_to raise_error
+
+      expect(response).to have_http_status(:ok)
+    end
+  end
+
+  # Le moteur satisfait les vérifications Pundit de l'app hôte via les marqueurs
+  # (skip_policy_scope / skip_authorization), PROTECTED dans Pundit, et quel que
+  # soit le nom de l'after_action qui les regroupe. On prouve que ça passe par le
+  # marqueur (handle_error N'EST PAS appelé) et non par la garde performed?.
+  describe 'satisfies host Pundit verifications via markers' do
+    controller(UploadDND::TemporaryAttachmentsController) do
+      after_action :enforce_pundit_checks, only: :index
+
+      protected
+
+      # Mimique Pundit : méthodes PROTECTED qui posent les marqueurs.
+      def skip_policy_scope = @_policy_scoped = true
+      def skip_authorization = @_authorized = true
+
+      # after_action au nom CUSTOM qui lève si les marqueurs ne sont pas posés.
+      def enforce_pundit_checks
+        raise "Pundit scope/authorization not performed" unless @_policy_scoped && @_authorized
+      end
+    end
+
+    it 'calls the markers (not via the performed? fallback)' do
+      expect(controller).not_to receive(:handle_error)
+
+      get :index, params: { attribute_name: 'documents' }
+
+      expect(response).to have_http_status(:ok)
     end
   end
 end

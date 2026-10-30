@@ -30,7 +30,7 @@ RSpec.describe UploadDND::FileValidator, "avec un champ fichier classique" do
         Class.new(ActiveRecord::Base) do
           self.table_name = "users"
           has_one_attached :classic_doc
-          validates :classic_doc, file: { content_type: [ "application/pdf" ], strict_mime_check: true }
+          validates_with UploadDND::FileValidator, attributes: [ :classic_doc ], **{ content_type: [ "application/pdf" ], strict_mime_check: true }
         end
       )
     end
@@ -80,7 +80,7 @@ RSpec.describe UploadDND::FileValidator, "avec un champ fichier classique" do
         Class.new(ActiveRecord::Base) do
           self.table_name = "users"
           has_many_attached :classic_docs
-          validates :classic_docs, file: { content_type: [ "application/pdf" ], strict_mime_check: true }
+          validates_with UploadDND::FileValidator, attributes: [ :classic_docs ], **{ content_type: [ "application/pdf" ], strict_mime_check: true }
         end
       )
     end

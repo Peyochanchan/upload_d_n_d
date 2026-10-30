@@ -10,12 +10,12 @@ RSpec.describe UploadDND::ApplicationHelper, type: :helper do
     after { UploadDND.reset_configuration! }
 
     context "en mode :engine (défaut)" do
-      it "builds the engine route with record_gid, without any host route" do
+      it "builds the engine route with a signed target, without any host route" do
         url = helper.udnd_remove_file_url(record, attachment, "documents")
 
         expect(url).to include("/attachments/42")
-        expect(url).to include("attribute_name=documents")
-        expect(url).to include("record_gid=")
+        expect(url).to include("target=")
+        expect(url).not_to include("remove_file")
       end
     end
 

@@ -42,13 +42,26 @@ module UploadDND
       UploadDND::MimeTypes.from_accepted_types(@accepted_types).join(",")
     end
 
-    # Référence signée du champ, renvoyée au dépôt : le serveur en déduit les
-    # limites du modèle. nil sans record (limites globales).
-    def field_ref
-      return unless record && record.class.respond_to?(:reflect_on_attachment)
-      return unless record.class.reflect_on_attachment(attribute_name)
+    # Cible signée renvoyée au dépôt et à la suppression : le serveur en déduit
+    # modèle, attribut, record et namespace, sans faire confiance au client.
+    #
+    # Exige un `record:` (même non persisté) pour pouvoir signer le couple
+    # modèle/attribut, et que l'attribut soit déclaré `uploadable` sur le modèle.
+    def signed_target
+      unless record
+        raise ArgumentError,
+              "upload_field(#{attribute_name.inspect}) exige record: (même une instance neuve) " \
+              "pour signer la cible d'upload."
+      end
 
-      UploadDND::FieldReference.generate(record.class, attribute_name)
+      model_class = record.class
+      unless model_class.respond_to?(:uploadable_attributes) && model_class.uploadable_attributes.key?(attribute_name.to_sym)
+        raise ArgumentError,
+              "#{attribute_name.inspect} n'est pas déclaré `uploadable` sur #{model_class} : " \
+              "déclarez-le avec `uploadable :#{attribute_name}, ...`."
+      end
+
+      UploadDND::SignedTarget.for(record, attribute_name, namespace: namespace)
     end
 
     def model_name
@@ -56,14 +69,6 @@ module UploadDND
 
       # Convertit "Admin::Article" en "admin_article" (pour les IDs DOM)
       record.class.name.underscore.tr("/", "_")
-    end
-
-    # Génère le GlobalID pour le record (fonctionne avec tous les namespaces)
-    def record_gid
-      # Un record non persisté n'a pas d'ID => GlobalID impossible (MissingModelIdError).
-      return nil unless record&.persisted?
-
-      record.to_global_id.to_s
     end
 
     # Détermine l'URL d'attachement : soit vers le moteur de la gem, soit vers une route spécifique

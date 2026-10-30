@@ -1,14 +1,12 @@
 <div class="udnd-container"
      style="--udnd-accent-color: <%= main_color %>; --udnd-accent-rgb: <%= main_color_rgb %>;"
      data-controller="upload-d-n-d--uploads"
-     data-upload-d-n-d--uploads-record-id-value="<%= record&.id %>"
-     data-upload-d-n-d--uploads-record-gid-value="<%= record_gid %>"
      data-upload-d-n-d--uploads-attribute-name-value="<%= attribute_name %>"
      data-upload-d-n-d--uploads-attach-url-value="<%= attach_path %>"
      data-upload-d-n-d--uploads-max-size-value="<%= max_size %>"
      data-upload-d-n-d--uploads-accepted-types-value="<%= accepted_types %>"
      data-upload-d-n-d--uploads-mime-types-value="<%= accepted_mime_types %>"
-     data-upload-d-n-d--uploads-field-ref-value="<%= field_ref %>"
+     data-upload-d-n-d--uploads-target-value="<%= signed_target %>"
      data-upload-d-n-d--uploads-multiple-value="<%= multiple %>"
      data-upload-d-n-d--uploads-i18n-value="<%= i18n_messages.to_json %>">
 
@@ -46,7 +44,7 @@
   <%# Record persisté : ses attachments. Sinon : les fichiers temporaires de la session,
       pour que la zone reste remplie après un rechargement de page. %>
   <% if record&.persisted? %>
-    <%= render "upload_d_n_d/shared/files_list", record: record, attribute_name: attribute_name %>
+    <%= render "upload_d_n_d/shared/files_list", record: record, attribute_name: attribute_name, namespace: namespace %>
   <% else %>
     <%= render "upload_d_n_d/shared/temp_files_list", files: files, attribute_name: attribute_name %>
   <% end %>

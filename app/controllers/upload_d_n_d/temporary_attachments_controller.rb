@@ -20,6 +20,7 @@ module UploadDND
   # 3. Helper transfers temp files to real record and destroys TemporaryAttachment
   class TemporaryAttachmentsController < BaseAttachmentsController
     # Autorisation (UploadDND::Authorization, fail-closed)
+    before_action :find_target, only: [ :create ]
     before_action :authorize_upload!, only: [ :create ]
     before_action :authorize_delete!, only: [ :destroy, :purge ]
 
@@ -60,7 +61,7 @@ module UploadDND
     # - Turbo Stream pour remplacer la liste de fichiers
     # - JSON {status: 'ok'} en mode API
     def create
-      attribute_name = params[:attribute_name]
+      attribute_name = @target.attribute
 
       # Sanitize filename avant de créer l'attachment
       @blob.update(filename: sanitize_filename(@blob.filename.to_s))
@@ -149,7 +150,7 @@ module UploadDND
       else
         respond_to do |format|
           format.json { render json: { status: "ok", message: I18n.t("upload_d_n_d.success.file_uploaded") }, status: :ok }
-          format.html { redirect_back fallback_location: root_path, notice: I18n.t("upload_d_n_d.success.file_added") }
+          format.html { redirect_back fallback_location: (main_app.respond_to?(:root_path) ? main_app.root_path : "/"), notice: I18n.t("upload_d_n_d.success.file_added") }
           format.any { render json: { status: "ok", message: I18n.t("upload_d_n_d.success.file_uploaded") }, status: :ok }
         end
       end
@@ -159,27 +160,13 @@ module UploadDND
       Rails.logger.info "UploadDND: Temporary file deleted - #{@temp_attachment.attribute_name} by #{current_user&.id || 'anonymous'}"
     end
 
-    # Limites du champ visé : celles du modèle si le composant a fourni sa
-    # référence signée (field_ref), sinon la configuration globale (ancien
-    # client, appel direct).
+    # Limites du champ visé, lues sur le modèle via la cible signée (obligatoire
+    # au dépôt temporaire : plus de repli silencieux sur la configuration globale).
     def validate_blob_constraints
       return unless @blob
 
-      constraints = field_constraints
-      return if performed?
-
-      violation = constraints.violation(@blob)
-      render_error(constraints.error_message(violation), :unprocessable_entity) if violation
-    end
-
-    def field_constraints
-      return UploadDND::FieldConstraints.global if params[:field_ref].blank?
-
-      UploadDND::FieldReference.constraints(params[:field_ref], params[:attribute_name])
-    rescue UploadDND::FieldReference::Invalid
-      Rails.logger.warn "UploadDND: invalid field reference for #{params[:attribute_name]}"
-      render_error(I18n.t("upload_d_n_d.errors.invalid_field_reference"), :bad_request)
-      nil
+      violation = @target.constraints.violation(@blob)
+      render_error(@target.constraints.error_message(violation), :unprocessable_entity) if violation
     end
 
     # === Autorisation ===
@@ -187,12 +174,18 @@ module UploadDND
     def authorize_upload!
       authorize_with_adapter!(:upload_d_n_d_temporary_attachment, :create)
       grant_upload_authorization!
+    rescue UploadDND::Authorization::RuleMissing
+      Rails.logger.warn "UploadDND: aucune policy UploadDNDTemporaryAttachmentPolicy (create?) - refus (fail-closed)"
+      render_forbidden
     rescue UploadDND::Authorization::Denied
       render_forbidden
     end
 
     def authorize_delete!
       authorize_with_adapter!(:upload_d_n_d_temporary_attachment, :destroy)
+    rescue UploadDND::Authorization::RuleMissing
+      Rails.logger.warn "UploadDND: aucune policy UploadDNDTemporaryAttachmentPolicy (destroy?) - refus (fail-closed)"
+      render_forbidden
     rescue UploadDND::Authorization::Denied
       render_forbidden
     end

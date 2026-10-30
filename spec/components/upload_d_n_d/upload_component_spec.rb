@@ -121,31 +121,41 @@ RSpec.describe UploadDND::UploadComponent, type: :component do
     end
   end
 
-  describe "#record_gid" do
-    context "with a persisted record" do
+  describe "#signed_target" do
+    context "with a persisted uploadable record" do
       let(:component) { described_class.new(attribute_name: :avatar, record: user) }
 
-      it "returns a GlobalID string" do
-        expect(component.record_gid).to be_a(String)
-        expect(component.record_gid).to include("gid://")
-        expect(component.record_gid).to include("User")
+      it "returns a verifiable token carrying the record" do
+        target = UploadDND::SignedTarget.verify(component.signed_target)
+        expect(target.model_class).to eq(User)
+        expect(target.attribute).to eq("avatar")
+        expect(target.record_id).to eq(user.id)
       end
     end
 
-    context "with a non-persisted record" do
-      let(:new_user) { User.new(name: "New User", email: "new@example.com") }
-      let(:component) { described_class.new(attribute_name: :avatar, record: new_user) }
+    context "with a new (unpersisted) uploadable record" do
+      let(:component) { described_class.new(attribute_name: :avatar, record: User.new) }
 
-      it "returns nil" do
-        expect(component.record_gid).to be_nil
+      it "returns a token without a record_id" do
+        target = UploadDND::SignedTarget.verify(component.signed_target)
+        expect(target.attribute).to eq("avatar")
+        expect(target.record_id).to be_nil
       end
     end
 
     context "without a record" do
       let(:component) { described_class.new(attribute_name: :avatar) }
 
-      it "returns nil" do
-        expect(component.record_gid).to be_nil
+      it "raises (a record is required to sign the target)" do
+        expect { component.signed_target }.to raise_error(ArgumentError, /record:/)
+      end
+    end
+
+    context "with a non-uploadable attribute" do
+      let(:component) { described_class.new(attribute_name: :internal_file, record: User.new) }
+
+      it "raises (the attribute must be declared uploadable)" do
+        expect { component.signed_target }.to raise_error(ArgumentError, /uploadable/)
       end
     end
   end
@@ -352,7 +362,7 @@ RSpec.describe UploadDND::UploadComponent, type: :component do
         expect(component.max_size).to eq(server.max_size)
         expect(component.accepted_types).to eq(server.accepted_extensions)
         expect(component.accepted_mime_types.split(",")).to eq(server.content_types)
-        expect(UploadDND::FieldReference.constraints(component.field_ref, attribute)).to eq(server)
+        expect(UploadDND::SignedTarget.verify(component.signed_target).constraints).to eq(server)
       end
     end
 
@@ -362,17 +372,17 @@ RSpec.describe UploadDND::UploadComponent, type: :component do
       expect(component.accepted_types.split(",")).to include(".jpg", ".jpeg")
     end
 
-    it "renders the field reference and the MIME types for the browser" do
+    it "renders the signed target and the MIME types for the browser" do
       container = render_inline(described_class.new(attribute_name: :avatar, record: LimitedUser.new)).at_css(".udnd-container")
-      expect(container["data-upload-d-n-d--uploads-field-ref-value"]).to be_present
+      expect(container["data-upload-d-n-d--uploads-target-value"]).to be_present
       expect(container["data-upload-d-n-d--uploads-mime-types-value"]).to eq("image/png")
     end
 
-    it "emits no field reference without a record (global limits)" do
+    it "still falls back to global limits without a record (but cannot sign a target)" do
       component = described_class.new(attribute_name: :documents)
 
-      expect(component.field_ref).to be_nil
       expect(component.max_size).to eq(UploadDND.configuration.max_size)
+      expect { component.signed_target }.to raise_error(ArgumentError)
     end
   end
 
@@ -395,7 +405,9 @@ RSpec.describe UploadDND::UploadComponent, type: :component do
 
     context "without a persisted record" do
       let(:session_id) { SecureRandom.uuid }
-      let(:component) { described_class.new(attribute_name: :documents) }
+      # Formulaire temporaire : un record neuf (non persisté) permet de signer la
+      # cible tout en affichant les fichiers temporaires de la session.
+      let(:component) { described_class.new(attribute_name: :documents, record: User.new) }
 
       before do
         allow_any_instance_of(ActionDispatch::Request).to receive(:session)

@@ -93,7 +93,7 @@ RSpec.describe UploadDND::FileValidator do
 
   describe "content_type validation" do
     before do
-      TestRecord.validates :avatar, file: { content_type: [ "image/jpeg", "image/png" ] }
+      TestRecord.validates_with UploadDND::FileValidator, attributes: [ :avatar ], **{ content_type: [ "image/jpeg", "image/png" ] }
     end
 
     after do
@@ -113,7 +113,7 @@ RSpec.describe UploadDND::FileValidator do
 
     it "accepts multiple content types" do
       TestRecord.clear_validators!
-      TestRecord.validates :avatar, file: { content_type: [ "image/jpeg", "application/pdf" ] }
+      TestRecord.validates_with UploadDND::FileValidator, attributes: [ :avatar ], **{ content_type: [ "image/jpeg", "application/pdf" ] }
 
       record.avatar.attach(image_blob)
       expect(record).to be_valid
@@ -125,7 +125,7 @@ RSpec.describe UploadDND::FileValidator do
 
     it "allows custom error message" do
       TestRecord.clear_validators!
-      TestRecord.validates :avatar, file: {
+      TestRecord.validates_with UploadDND::FileValidator, attributes: [ :avatar ], **{
         content_type: [ "image/jpeg" ],
         message: "doit être une image JPEG"
       }
@@ -138,7 +138,7 @@ RSpec.describe UploadDND::FileValidator do
 
   describe "max_size validation" do
     before do
-      TestRecord.validates :avatar, file: { max_size: 5.megabytes }
+      TestRecord.validates_with UploadDND::FileValidator, attributes: [ :avatar ], **{ max_size: 5.megabytes }
     end
 
     after do
@@ -166,7 +166,7 @@ RSpec.describe UploadDND::FileValidator do
 
     it "allows custom error message" do
       TestRecord.clear_validators!
-      TestRecord.validates :avatar, file: {
+      TestRecord.validates_with UploadDND::FileValidator, attributes: [ :avatar ], **{
         max_size: 5.megabytes,
         message: "est trop volumineux"
       }
@@ -180,7 +180,7 @@ RSpec.describe UploadDND::FileValidator do
 
   describe "max_files validation for has_many_attached" do
     before do
-      TestRecord.validates :documents, file: { max_files: 3 }
+      TestRecord.validates_with UploadDND::FileValidator, attributes: [ :documents ], **{ max_files: 3 }
     end
 
     after do
@@ -215,7 +215,7 @@ RSpec.describe UploadDND::FileValidator do
 
   describe "combined validations" do
     before do
-      TestRecord.validates :documents, file: {
+      TestRecord.validates_with UploadDND::FileValidator, attributes: [ :documents ], **{
         content_type: [ "image/jpeg", "image/png" ],
         max_size: 5.megabytes,
         max_files: 2
@@ -265,7 +265,7 @@ RSpec.describe UploadDND::FileValidator do
 
   describe "when no file is attached" do
     it "does not validate" do
-      TestRecord.validates :avatar, file: { content_type: [ "image/jpeg" ] }
+      TestRecord.validates_with UploadDND::FileValidator, attributes: [ :avatar ], **{ content_type: [ "image/jpeg" ] }
 
       # avatar n'est pas attaché (MockAttachment sans blob)
       expect(record).to be_valid
@@ -276,7 +276,7 @@ RSpec.describe UploadDND::FileValidator do
 
   describe "strict_mime_check option" do
     before do
-      TestRecord.validates :avatar, file: {
+      TestRecord.validates_with UploadDND::FileValidator, attributes: [ :avatar ], **{
         content_type: [ "image/jpeg" ],
         strict_mime_check: true
       }
@@ -320,16 +320,18 @@ RSpec.describe UploadDND::FileValidator do
     end
   end
 
-  describe "top-level FileValidator alias" do
-    it "creates a top-level ::FileValidator constant" do
-      expect(defined?(::FileValidator)).to be_truthy
-      expect(::FileValidator).to eq(UploadDND::FileValidator)
+  describe "no global ::FileValidator alias (ne masque pas le validateur de l'app)" do
+    it "wires `uploadable` to UploadDND::FileValidator explicitly" do
+      # La gem ne crée pas de ::FileValidator global (il court-circuiterait le
+      # FileValidator d'une app hôte). `uploadable` référence explicitement
+      # UploadDND::FileValidator via validates_with.
+      validators = LimitedUser.validators_on(:avatar).map(&:class)
+      expect(validators).to include(UploadDND::FileValidator)
     end
 
-    it "does not override existing ::FileValidator if already defined" do
-      # Ce test vérifie le comportement du unless defined?
-      # Si ::FileValidator existe déjà, il ne devrait pas être écrasé
-      expect(::FileValidator).to eq(UploadDND::FileValidator)
+    it "does not create a top-level ::FileValidator constant" do
+      source = File.read(File.expand_path("../../../lib/upload_d_n_d/file_validator.rb", __dir__))
+      expect(source).not_to match(/^\s*::FileValidator\s*=/)
     end
   end
 end

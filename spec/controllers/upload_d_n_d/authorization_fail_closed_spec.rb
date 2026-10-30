@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 # SÉCURITÉ (S1) : sans adaptateur d'autorisation utilisable, chaque endpoint
-# du moteur refuse (403) et ne modifie rien. Auparavant, tout passait.
+# du moteur refuse (403) et ne modifie rien.
 RSpec.shared_context 'upload_d_n_d authorization' do
   routes { UploadDND::Engine.routes }
 
@@ -34,7 +34,7 @@ RSpec.describe UploadDND::AttachmentsController, type: :controller do
       it 'refuses create (403), attaches nothing and keeps the blob' do
         blob = upload
 
-        post :create, params: { signed_blob_id: blob.signed_id, attribute_name: 'avatar', record_gid: user.to_global_id.to_s }, format: :json
+        post :create, params: { signed_blob_id: blob.signed_id, target: signed_target_for(user, :avatar) }, format: :json
 
         expect(response).to have_http_status(:forbidden)
         expect(user.reload.avatar).not_to be_attached
@@ -44,7 +44,7 @@ RSpec.describe UploadDND::AttachmentsController, type: :controller do
       it 'refuses destroy (403) and keeps the file' do
         user.avatar.attach(upload)
 
-        delete :destroy, params: { id: user.avatar.attachment.id, record_gid: user.to_global_id.to_s, attribute_name: 'avatar' }, format: :json
+        delete :destroy, params: { id: user.avatar.attachment.id, target: signed_target_for(user, :avatar) }, format: :json
 
         expect(response).to have_http_status(:forbidden)
         expect(user.reload.avatar).to be_attached
@@ -56,7 +56,7 @@ RSpec.describe UploadDND::AttachmentsController, type: :controller do
     before { UploadDND.configuration.authorization_adapter = :none }
 
     it 'lets create through' do
-      post :create, params: { signed_blob_id: upload.signed_id, attribute_name: 'avatar', record_gid: user.to_global_id.to_s }, format: :json
+      post :create, params: { signed_blob_id: upload.signed_id, target: signed_target_for(user, :avatar) }, format: :json
 
       expect(response).to have_http_status(:ok)
       expect(user.reload.avatar).to be_attached
@@ -69,27 +69,27 @@ RSpec.describe UploadDND::AttachmentsController, type: :controller do
       UploadDND.configuration.authorization_adapter = :cancancan
     end
 
-    it 'checks the generic rule then the record' do
+    it 'authorizes the record only (:update)' do
       calls = []
       controller.singleton_class.define_method(:authorize!) { |action, subject| calls << [ action, subject ] }
 
-      post :create, params: { signed_blob_id: upload.signed_id, attribute_name: 'avatar', record_gid: user.to_global_id.to_s }, format: :json
+      post :create, params: { signed_blob_id: upload.signed_id, target: signed_target_for(user, :avatar) }, format: :json
 
       expect(response).to have_http_status(:ok)
-      expect(calls).to eq([ [ :create, :upload_d_n_d_attachment ], [ :update, user ] ])
+      expect(calls).to eq([ [ :update, user ] ])
     end
 
     it 'refuses (403) when the ability denies the record' do
       owner = user
       controller.singleton_class.define_method(:authorize!) { |_action, subject| raise CanCan::AccessDenied if subject == owner }
 
-      post :create, params: { signed_blob_id: upload.signed_id, attribute_name: 'avatar', record_gid: user.to_global_id.to_s }, format: :json
+      post :create, params: { signed_blob_id: upload.signed_id, target: signed_target_for(user, :avatar) }, format: :json
 
       expect(response).to have_http_status(:forbidden)
       expect(user.reload.avatar).not_to be_attached
     end
 
-    it 'refuses destroy (403) without falling back to the generic rule' do
+    it 'refuses destroy (403) on the record rule only' do
       user.avatar.attach(upload)
       calls = []
       controller.singleton_class.define_method(:authorize!) do |action, subject|
@@ -97,7 +97,7 @@ RSpec.describe UploadDND::AttachmentsController, type: :controller do
         raise CanCan::AccessDenied
       end
 
-      delete :destroy, params: { id: user.avatar.attachment.id, record_gid: user.to_global_id.to_s, attribute_name: 'avatar' }, format: :json
+      delete :destroy, params: { id: user.avatar.attachment.id, target: signed_target_for(user, :avatar) }, format: :json
 
       expect(response).to have_http_status(:forbidden)
       expect(calls).to eq([ [ :update, user ] ])
@@ -123,7 +123,7 @@ RSpec.describe UploadDND::TemporaryAttachmentsController, type: :controller do
         blob = upload
 
         expect {
-          post :create, params: { signed_blob_id: blob.signed_id, attribute_name: 'documents' }, format: :json
+          post :create, params: { signed_blob_id: blob.signed_id, target: temp_target_for(User, :documents) }, format: :json
         }.not_to change(UploadDND::TemporaryAttachment, :count)
 
         expect(response).to have_http_status(:forbidden)
@@ -154,7 +154,7 @@ RSpec.describe UploadDND::TemporaryAttachmentsController, type: :controller do
     before { UploadDND.configuration.authorization_adapter = :none }
 
     it 'lets create through' do
-      post :create, params: { signed_blob_id: upload.signed_id, attribute_name: 'documents' }, format: :json
+      post :create, params: { signed_blob_id: upload.signed_id, target: temp_target_for(User, :documents) }, format: :json
 
       expect(response).to have_http_status(:ok)
     end

@@ -6,13 +6,11 @@ export default class extends Controller {
   static values = {
     attachUrl: String,
     attributeName: String,
-    recordId: String,
-    recordGid: String,
     multiple: Boolean,
     maxSize: Number,
     acceptedTypes: String,
     mimeTypes: String,
-    fieldRef: String,
+    target: String,
     i18n: Object
   }
 
@@ -152,20 +150,11 @@ export default class extends Controller {
   }
 
   attachBlob(blob) {
+    // Cible signée (modèle, attribut, record, namespace) : le serveur ne fait
+    // pas confiance au client pour désigner la cible ni le namespace de policy.
     const payload = {
       signed_blob_id: blob.signed_id,
-      attribute_name: this.attributeNameValue,
-      multiple: this.multipleValue
-    }
-
-    // Référence signée du champ : le serveur applique les limites du modèle
-    if (this.fieldRefValue) {
-      payload.field_ref = this.fieldRefValue
-    }
-
-    // Si on a un record existant, on passe son GlobalID
-    if (this.hasRecordGidValue && this.recordGidValue) {
-      payload.record_gid = this.recordGidValue
+      target: this.targetValue
     }
 
     fetch(this.attachUrlValue, {
