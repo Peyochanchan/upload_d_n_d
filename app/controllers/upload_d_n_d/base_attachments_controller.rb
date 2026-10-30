@@ -18,6 +18,16 @@ module UploadDND
     # Inclure Pundit si disponible
     include Pundit::Authorization if defined?(Pundit)
 
+    # Le moteur fait sa propre autorisation (port adaptateur). Si l'app hôte
+    # (parent_controller = "ApplicationController") a les after_action Pundit
+    # classiques (verify_authorized / verify_policy_scoped), on les retire des
+    # routes du moteur : sinon `index` (qui ne passe pas par Pundit) lèverait
+    # après le rendu → DoubleRenderError. raise: false = sans effet si absents.
+    if defined?(::Pundit)
+      skip_after_action :verify_authorized, raise: false
+      skip_after_action :verify_policy_scoped, raise: false
+    end
+
     # Inclure le rate limiting
     include UploadDND::RateLimiting
 
@@ -159,6 +169,10 @@ module UploadDND
       Rails.logger.error "UploadDND Error: #{exception.class} - #{exception.message}"
       Rails.logger.error exception.backtrace.join("\n")
 
+      # Si la réponse est déjà rendue (ex. un after_action qui lève après coup),
+      # ne pas re-rendre : cela provoquerait un DoubleRenderError.
+      return if performed?
+
       render_error(I18n.t("upload_d_n_d.errors.upload_error"), :internal_server_error)
     end
 
@@ -178,16 +192,17 @@ module UploadDND
 
     # === Helpers d'authentification ===
 
-    def current_user
-      # Tente de récupérer current_user depuis l'application hôte
-      # En utilisant warden (Devise)
-      if defined?(Warden) && request.env["warden"]
-        request.env["warden"].user
-      elsif respond_to?(:super, true)
-        super
-      else
-        nil
-      end
+    # Public : l'app hôte vérifie souvent `respond_to?(:current_user)` (sans
+    # include_all) dans ses before_action / pour alimenter Current.user ; une
+    # méthode protected y répondrait faux. Priorité au `current_user` fourni par
+    # le parent (parent_controller = "ApplicationController"), repli Warden sinon.
+    # NB : `defined?(super)` teste la présence d'une méthode parente (et non
+    # `respond_to?(:super)`, qui cherchait à tort une méthode nommée :super).
+    public def current_user
+      return super if defined?(super)
+      return request.env["warden"].user if defined?(Warden) && request.env["warden"]
+
+      nil
     end
 
     def authenticate_user_if_available!

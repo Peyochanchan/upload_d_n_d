@@ -57,6 +57,19 @@ Everything else (JS, CSS, components, concerns) is served from the gem: upgradin
 
 With **jsbundling-rails** (bun/esbuild), the `upload_d_n_d:link_js` task copies the gem's JS/CSS into `node_modules/upload_d_n_d` so your bundler can resolve `import "upload_d_n_d"` and `@import "upload_d_n_d/styles"`. It is a real directory (not a symlink), so the gem's own imports of `@hotwired/stimulus` and `@rails/activestorage` resolve against your app's `node_modules`. The task runs automatically on `javascript:build` (so `assets:precompile` at deploy is always up to date). Note: a watch-mode dev server such as `bin/dev` calls the bundler directly and does **not** run the task, so after upgrading the gem run `bin/rails javascript:build` once locally to refresh the copy.
 
+CSS — one line, whichever bundler:
+
+```css
+/* Tailwind 3 (postcss-import), esbuild or bun */
+@import "upload_d_n_d/styles";
+```
+
+With **Sprockets** (asset pipeline) instead of a JS bundler, use the stylesheet tag:
+
+```erb
+<%= stylesheet_link_tag "upload_d_n_d/application", media: "all" %>
+```
+
 ActiveStorage must be installed (`bin/rails active_storage:install`). With an external S3-like bucket and a strict CSP, serve files same-origin:
 
 ```ruby

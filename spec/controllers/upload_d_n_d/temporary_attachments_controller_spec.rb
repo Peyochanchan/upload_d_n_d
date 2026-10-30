@@ -320,6 +320,13 @@ RSpec.describe UploadDND::TemporaryAttachmentsController, type: :controller do
         delete :destroy, params: { id: temp_attachment.id }, format: :turbo_stream
         expect(response.content_type).to include('text/vnd.turbo-stream.html')
       end
+
+      # Moteur isolé : la branche format.html ne doit pas planter sur root_path
+      # (NameError -> 500). On tombe sur main_app.root_path ou "/".
+      it 'does not crash on a non-turbo (html) delete' do
+        delete :destroy, params: { id: temp_attachment.id }, format: :html
+        expect(response.status).to be < 500
+      end
     end
 
     context 'with invalid session' do

@@ -66,10 +66,10 @@ module UploadDND
           target_attr = resolve_target(temp_attachment.attribute_name, attribute_map)
           next if target_attr.nil? # non demandé explicitement : on laisse (nettoyage orphelins)
 
-          unless uploadable.key?(target_attr.to_sym)
-            temp_attachment.destroy # champ non uploadable : fichier non légitime
-            next
-          end
+          # Champ non uploadable : ne pas transférer ET ne pas détruire — ce peut
+          # être un temporaire d'un autre formulaire ouvert dans la même session
+          # (autre modèle/onglet). Le job d'expiration les nettoie.
+          next unless uploadable.key?(target_attr.to_sym)
 
           attachment = UploadDND::AttachmentLookup.find(record, target_attr)
           blob_attachment = temp_attachment.blob_attachment

@@ -351,4 +351,31 @@ RSpec.describe UploadDND::BaseAttachmentsController, type: :controller do
       expect(response).to have_http_status(:internal_server_error)
     end
   end
+
+  # F6 : current_user doit être public pour que l'app hôte le détecte via
+  # respond_to? (ses before_action / Current.user) quand parent_controller est
+  # "ApplicationController".
+  describe '#current_user visibility' do
+    it 'is public' do
+      expect(controller.respond_to?(:current_user)).to be(true)
+    end
+  end
+
+  # Un after_action de l'app hôte (ex. Pundit verify_policy_scoped) qui lève
+  # APRÈS le rendu ne doit pas provoquer de DoubleRenderError : handle_error
+  # garde sur performed?.
+  describe 'handle_error guards against double render' do
+    controller(UploadDND::TemporaryAttachmentsController) do
+      after_action :explode, only: :index
+      def explode = raise(StandardError, "after-action boom")
+    end
+
+    it 'keeps the first response instead of rendering twice' do
+      expect {
+        get :index, params: { attribute_name: 'documents' }
+      }.not_to raise_error
+
+      expect(response).to have_http_status(:ok)
+    end
+  end
 end

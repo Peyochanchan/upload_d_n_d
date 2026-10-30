@@ -43,9 +43,10 @@ UploadDND.configure do |config|
   # pour s'en passer. Sans adaptateur utilisable, tout est refusé (403).
   # config.authorization_adapter = :pundit # ou :cancancan, ou :none
 
-  # Validateur personnalisé
-  # Par défaut, utilise FileValidator si disponible
-  # config.validator_class = 'FileValidator'
+  # Contrôleur parent des routes du moteur (défaut "ActionController::Base").
+  # Mettre "ApplicationController" pour hériter de pundit_user / current_ability
+  # et des before_action d'authentification/multi-tenant de l'app hôte.
+  # config.parent_controller = "ApplicationController"
 
   # Configuration du stockage ActiveStorage (optionnel)
   # Exemple: forcer l'utilisation d'un service spécifique

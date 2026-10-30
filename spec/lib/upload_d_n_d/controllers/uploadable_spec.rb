@@ -127,8 +127,8 @@ RSpec.describe UploadableTestController, type: :controller do
     end
 
     # SÉCURITÉ : attribute_name du temporaire vient du client.
-    context 'when attribute_name is not an attachment' do
-      it 'never calls the method on the record and drops the temporary file' do
+    context 'when attribute_name is not an uploadable attribute' do
+      it 'never calls the method on the record and leaves the temporary file' do
         blob = ActiveStorage::Blob.create_and_upload!(io: StringIO.new("data"), filename: 'file.pdf')
         temp = UploadDND::TemporaryAttachment.create!(session_id: session_id, attribute_name: 'destroy')
         temp.blob.attach(blob)
@@ -136,7 +136,8 @@ RSpec.describe UploadableTestController, type: :controller do
         post :test_attach_files, params: { id: user.id, attribute_name: 'destroy' }
 
         expect(User.exists?(user.id)).to be true
-        expect(UploadDND::TemporaryAttachment.exists?(temp.id)).to be false
+        # Non transféré, mais laissé (option b) : non détruit.
+        expect(UploadDND::TemporaryAttachment.exists?(temp.id)).to be true
       end
     end
   end

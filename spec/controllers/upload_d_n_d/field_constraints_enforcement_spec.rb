@@ -163,17 +163,18 @@ RSpec.describe 'Transfer of temporary files to the record' do
     expect(UploadDND::TemporaryAttachment.for_session(session_id)).to be_empty
   end
 
-  # F3 : un temporaire forgé vers un attribut NON déclaré uploadable n'est jamais
-  # transféré (et le fichier non légitime est nettoyé).
-  it 'ne transfère pas un fichier temporaire vers un champ non uploadable (F3)' do
-    temporary('internal_file', data: "x") # has_one_attached NON uploadable sur User
+  # F3 : un temporaire vers un attribut NON déclaré uploadable n'est jamais
+  # transféré. Il n'est PAS détruit (option b) : ce peut être un temporaire d'un
+  # autre formulaire de la même session ; le job d'expiration le nettoiera.
+  it 'ne transfère pas un fichier temporaire vers un champ non uploadable (F3) et le laisse' do
+    temp = temporary('internal_file', data: "x") # has_one_attached NON uploadable sur User
 
     user = perform_enqueued_jobs do
       User.create!(name: 'New', email: 'new-f3@example.com', temp_upload_session_id: session_id)
     end
 
     expect(user.internal_file).not_to be_attached
-    expect(UploadDND::TemporaryAttachment.for_session(session_id)).to be_empty
+    expect(UploadDND::TemporaryAttachment.exists?(temp.id)).to be(true)
   end
 
   # F3 : un temporaire pour un attribut non demandé par l'app (hors attribute_map)

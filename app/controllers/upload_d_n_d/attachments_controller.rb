@@ -114,7 +114,7 @@ module UploadDND
       else
         respond_to do |format|
           format.json { render json: { status: "ok", message: I18n.t("upload_d_n_d.success.file_added") }, status: :ok }
-          format.html { redirect_back fallback_location: root_path, notice: I18n.t("upload_d_n_d.success.file_added") }
+          format.html { redirect_back fallback_location: (main_app.respond_to?(:root_path) ? main_app.root_path : "/"), notice: I18n.t("upload_d_n_d.success.file_added") }
           format.any { render json: { status: "ok", message: I18n.t("upload_d_n_d.success.file_added") }, status: :ok }
         end
       end
