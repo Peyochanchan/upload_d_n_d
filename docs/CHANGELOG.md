@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **Purge de blob restreinte aux requêtes autorisées sur le record** — l'autorisation de purge des blobs refusés n'est plus posée par la policy générique seule. Une requête qui échoue avant la localisation et l'autorisation du record (record absent ou introuvable, 400/404) ne purge plus le blob déposé. Sans ce correctif, un utilisateur disposant du droit générique pouvait forcer la purge d'un blob récent non rattaché dont il connaissait le `signed_id`, via une requête vouée à l'échec. Les blobs réellement orphelins restent nettoyés par la purge des orphelins.
+
+### Fixed
+- **Signature de blob invalide : 401 au lieu de 500** — `find_blob` ne gardait pas le cas où `ActiveStorage::Blob.find_signed` renvoie `nil` (signature invalide ou blob supprimé), ce qui provoquait une erreur 500. La requête est désormais refusée proprement en 401.
+
+### Removed
+- **Helper mort retiré** (`app/helpers/upload_d_n_d/controllers/helpers.rb`, `UploadDND::Controllers::Helpers`) : un duplicata inutilisé de `attach_upload_d_n_d_files` qui attachait sans passer par `AttachmentLookup` ni les contraintes de champ. L'implémentation utilisée reste le concern `UploadDND::Controllers::Uploadable`.
+
 ## [0.9.4] - 2026-10-29
 
 `link_js` copie le JS/CSS dans `node_modules` au lieu d'un lien symbolique, pour que les imports tiers de la gem se résolvent dans l'app (jsbundling/bun/esbuild). Patch, sans changement d'API.

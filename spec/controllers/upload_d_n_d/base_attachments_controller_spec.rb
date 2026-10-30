@@ -238,12 +238,17 @@ RSpec.describe UploadDND::BaseAttachmentsController, type: :controller do
   end
 
   describe 'error handling' do
+    # find_blob rejette désormais un signed_blob_id invalide (401) ; ces tests
+    # des handlers rescue_from ont besoin d'un blob valide pour atteindre
+    # l'action (stubbée pour lever).
+    let(:blob) { ActiveStorage::Blob.create_and_upload!(io: StringIO.new("data"), filename: 'x.png', content_type: 'image/png') }
+
     describe '#record_not_found' do
       it 'renders not_found error' do
         allow(controller).to receive(:create).and_raise(ActiveRecord::RecordNotFound)
 
         post :create, params: {
-          signed_blob_id: 'valid' * 10,
+          signed_blob_id: blob.signed_id,
           attribute_name: 'documents'
         }, format: :json
 
@@ -272,7 +277,7 @@ RSpec.describe UploadDND::BaseAttachmentsController, type: :controller do
         allow(controller).to receive(:create).and_raise(ActionController::BadRequest.new('Custom error'))
 
         post :create, params: {
-          signed_blob_id: 'valid' * 10,
+          signed_blob_id: blob.signed_id,
           attribute_name: 'documents'
         }, format: :json
 
@@ -289,7 +294,7 @@ RSpec.describe UploadDND::BaseAttachmentsController, type: :controller do
         expect(Rails.logger).to receive(:error).at_least(:once)
 
         post :create, params: {
-          signed_blob_id: 'valid' * 10,
+          signed_blob_id: blob.signed_id,
           attribute_name: 'documents'
         }, format: :json
 
