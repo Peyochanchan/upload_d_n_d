@@ -47,27 +47,46 @@ module UploadDND
       #     @user,
       #     { 'avatar' => :avatar, 'documents' => :documents }
       #   )
-      def attach_to_record(session_id, record, attribute_map = {})
-        for_session(session_id).find_each do |temp_attachment|
-          source_attr = temp_attachment.attribute_name
-          target_attr = attribute_map[source_attr]&.to_s || source_attr
+      # Transfère les fichiers temporaires d'une session vers un record.
+      #
+      # @param attribute_map [Hash, nil] mapping source => cible. nil (callback
+      #   after_create) = identité sur les attributs `uploadable` du modèle.
+      #
+      # SÉCURITÉ (F3) : on ne traite que les attributs explicitement demandés
+      # (clés de `attribute_map`, ou les `uploadable_attributes` du modèle), et
+      # seulement s'ils sont déclarés `uploadable` — un attribute_name forgé vers
+      # un autre champ (ex. "signed_contract") n'est jamais transféré.
+      # SÉCURITÉ (F4) : `max_files` et les contraintes du champ sont vérifiés au
+      # transfert (le déplacement par `update!` ne relance pas la validation).
+      def attach_to_record(session_id, record, attribute_map = nil)
+        uploadable = record.class.respond_to?(:uploadable_attributes) ? record.class.uploadable_attributes : {}
+        counts = Hash.new { |hash, attr| hash[attr] = current_attachment_count(record, attr) }
 
-          # SÉCURITÉ : attribute_name vient du client — seul un attachment
-          # déclaré sur le modèle est résolu, jamais une méthode quelconque.
-          attachment = UploadDND::AttachmentLookup.find(record, target_attr)
-          unless attachment
-            temp_attachment.destroy
+        for_session(session_id).find_each do |temp_attachment|
+          target_attr = resolve_target(temp_attachment.attribute_name, attribute_map)
+          next if target_attr.nil? # non demandé explicitement : on laisse (nettoyage orphelins)
+
+          unless uploadable.key?(target_attr.to_sym)
+            temp_attachment.destroy # champ non uploadable : fichier non légitime
             next
           end
 
+          attachment = UploadDND::AttachmentLookup.find(record, target_attr)
           blob_attachment = temp_attachment.blob_attachment
-          if blob_attachment.nil? || temp_attachment.violates_constraints_of?(record, target_attr)
+          if attachment.nil? || blob_attachment.nil? || temp_attachment.violates_constraints_of?(record, target_attr)
             temp_attachment.destroy
             next
           end
 
           if attachment.is_a?(ActiveStorage::Attached::Many)
+            max = uploadable[target_attr.to_sym][:max_files]
+            if max && counts[target_attr] >= max
+              Rails.logger.warn "UploadDND: #{record.class}##{target_attr} max_files (#{max}) atteint au transfert - fichier refusé"
+              temp_attachment.destroy
+              next
+            end
             blob_attachment.update!(record: record, name: target_attr)
+            counts[target_attr] += 1
           elsif attachment.is_a?(ActiveStorage::Attached::One)
             if attachment.attached?
               temp_attachment.destroy
@@ -78,6 +97,25 @@ module UploadDND
 
           temp_attachment.reload
           temp_attachment.destroy
+        end
+      end
+
+      private
+
+      # Cible pour un attribut source. Avec une map : uniquement ses clés (nil
+      # sinon). Sans map (after_create) : identité (filtré ensuite sur uploadable).
+      def resolve_target(source_attr, attribute_map)
+        return source_attr if attribute_map.nil?
+
+        attribute_map[source_attr]&.to_s
+      end
+
+      def current_attachment_count(record, attribute)
+        attachment = UploadDND::AttachmentLookup.find(record, attribute)
+        case attachment
+        when ActiveStorage::Attached::Many then attachment.count
+        when ActiveStorage::Attached::One then attachment.attached? ? 1 : 0
+        else 0
         end
       end
     end

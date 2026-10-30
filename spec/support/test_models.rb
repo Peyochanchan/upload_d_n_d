@@ -39,7 +39,7 @@ class LimitedUser < ActiveRecord::Base
   include UploadDND::Uploadable
 
   uploadable :avatar, accept: [ :png ], max_size: 10, strict_mime_check: false
-  uploadable :documents, accept: [ :pdf, :jpg ], max_size: 2.kilobytes, multiple: true
+  uploadable :documents, accept: [ :pdf, :jpg ], max_size: 2.kilobytes, multiple: true, max_files: 2
   # Limites partielles : les types retombent sur la configuration globale
   uploadable :cover, max_size: 20
 end

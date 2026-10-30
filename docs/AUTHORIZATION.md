@@ -2,6 +2,25 @@
 
 Ce guide explique comment configurer l'authentification et l'autorisation pour la gem UploadDND.
 
+## Modèle d'autorisation (0.10.0)
+
+Depuis 0.10.0, la cible d'un dépôt/suppression (modèle, attribut, record, namespace de policy) provient d'un **jeton signé** émis par le composant, pas de paramètres bruts du client. Conséquences pratiques :
+
+- **Routes sur un record existant** (dépôt et suppression) : l'autorisation porte **sur le record**, action `:update`, avec le **namespace** passé au helper. Il n'y a **pas** de policy générique sur ces routes. **Fail-closed** : si aucune policy n'existe pour le record (ni namespacée ni top-level), la requête est refusée (403) et un avertissement en log nomme la policy manquante.
+- **Namespace** : pour une ressource administrée par une policy namespacée (ex. `Admin::DocumentPolicy`), passez-le au helper — il est signé dans le jeton :
+
+  ```erb
+  <%= upload_field :documents, record: @document, namespace: :admin %>
+  ```
+
+  Le serveur essaie `Admin::DocumentPolicy#update?` puis, à défaut, `DocumentPolicy#update?`.
+- **Fichiers temporaires** (formulaires de création, pas encore de record) : autorisés par la policy générique `UploadDNDTemporaryAttachmentPolicy` (`create?`/`destroy?`), obligatoire et fail-closed.
+- **Champs** : seuls les attributs déclarés `uploadable` sont ciblables (un `has_one_attached`/`has_many_attached` quelconque ne l'est pas). Le transfert des fichiers temporaires applique aussi `max_files` et les contraintes du champ.
+- **`config.parent_controller`** : par défaut `"ActionController::Base"` (moteur isolé). Mettez `"ApplicationController"` (dans un initializer) pour que `pundit_user`, `current_ability` et vos `before_action` d'authentification/multi-tenant s'appliquent aux routes du moteur.
+- Un `record_gid` non signé ne permet plus d'énumérer des records (le jeton est émis par le serveur pour un record précis).
+
+Les sections ci-dessous expliquent comment **écrire** vos policies (`create?`, `update?`, `destroy?`) : ces méthodes restent celles que la gem interroge.
+
 ## Table des matières
 
 1. [Configuration de base](#configuration-de-base)

@@ -88,7 +88,7 @@ module UploadDND
     private_class_method :copy
 
     def package_files(source)
-      exports = read_json(File.join(source, "package.json"))["exports"] || {}
+      pkg = read_json(File.join(source, "package.json"))
       targets = []
       collect = lambda do |value|
         case value
@@ -96,7 +96,10 @@ module UploadDND
         when Hash then value.each_value(&collect)
         end
       end
-      exports.each_value(&collect)
+      (pkg["exports"] || {}).each_value(&collect)
+      # Le champ `style` de premier niveau (postcss-import / Tailwind 3) n'est pas
+      # dans `exports` : on l'ajoute pour copier aussi le styles.css racine.
+      targets << pkg["style"] if pkg["style"]
 
       files = [ "package.json" ]
       targets.each do |target|

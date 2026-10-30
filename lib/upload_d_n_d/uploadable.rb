@@ -72,47 +72,10 @@ module UploadDND
 
     def attach_temporary_uploads
       return unless temp_upload_session_id.present?
-      return unless UploadDND::TemporaryAttachment.exists?(session_id: temp_upload_session_id)
 
-      UploadDND::TemporaryAttachment.where(session_id: temp_upload_session_id).find_each do |temp_attachment|
-        attribute_name = temp_attachment.attribute_name
-
-        # SÉCURITÉ : attribute_name vient du client — seul un attachment déclaré
-        # sur le modèle est résolu. Détection serveur du type (has_one vs has_many).
-        attachment = UploadDND::AttachmentLookup.find(self, attribute_name)
-        unless attachment
-          # Si l'attribut n'est pas un attachment du record, on nettoie quand même
-          # pour éviter de laisser des fichiers orphelins en base.
-          temp_attachment.destroy
-          next
-        end
-
-        blob_attachment = temp_attachment.blob_attachment
-        if blob_attachment.nil? || temp_attachment.violates_constraints_of?(self, attribute_name)
-          temp_attachment.destroy
-          next
-        end
-
-        if attachment.is_a?(ActiveStorage::Attached::Many)
-          # has_many_attached: on "déplace" l'attachment (pas de purge du blob)
-          blob_attachment.update!(record: self, name: attribute_name)
-        elsif attachment.is_a?(ActiveStorage::Attached::One)
-          # has_one_attached: utiliser = (remplace automatiquement)
-          # Ne transférer que le PREMIER fichier temporaire si plusieurs existent
-          if attachment.attached?
-            # Le record a déjà un fichier: on purgera le temporaire.
-            temp_attachment.destroy
-            next
-          end
-
-          blob_attachment.update!(record: self, name: attribute_name)
-        end
-
-        # Après déplacement, temp_attachment n'a plus d'attachment ActiveStorage.
-        # On reload pour éviter les caches d'association avant destroy.
-        temp_attachment.reload
-        temp_attachment.destroy
-      end
+      # Délègue au transfert durci (restreint aux champs `uploadable`, applique
+      # max_files et les contraintes du champ au transfert — cf. F3/F4).
+      UploadDND::TemporaryAttachment.attach_to_record(temp_upload_session_id, self)
 
       # Nettoie le session_id après utilisation
       @_temp_upload_session_id = nil

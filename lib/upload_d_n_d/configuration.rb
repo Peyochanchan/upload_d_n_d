@@ -21,6 +21,7 @@ module UploadDND
                   :on_upload_error,
                   :on_file_removed,
                   :delete_route,
+                  :parent_controller,
                   :signed_target_expires_in,
                   :rate_limit_enabled,
                   :rate_limit_max_requests,
@@ -62,6 +63,11 @@ module UploadDND
       #   de l'app (concern Controllers::Uploadable) — nécessite une route
       #   polymorphique pour le record (cf. README, "Records imbriqués").
       @delete_route = :engine
+      # Contrôleur parent des contrôleurs du moteur. Par défaut ActionController::Base
+      # (isolé). Mettre "ApplicationController" pour hériter de l'app hôte :
+      # pundit_user, current_ability, before_action d'authentification/multi-tenant.
+      # À régler dans un initializer (avant le premier chargement des contrôleurs).
+      @parent_controller = "ActionController::Base"
       # Durée de vie des jetons de cible signée (SignedTarget). nil = pas
       # d'expiration. 24h par défaut : assez long pour un onglet de formulaire
       # laissé ouvert, assez court pour limiter la portée d'une fuite de jeton.

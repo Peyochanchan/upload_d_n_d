@@ -56,6 +56,10 @@ RSpec.describe 'upload_d_n_d.gemspec' do
     expect(files).to include('package.json')
   end
 
+  it 'ships the root styles.css entry point (Tailwind 3 / postcss-import)' do
+    expect(files).to include('styles.css')
+  end
+
   it 'ships every file referenced by package.json exports' do
     expect(exported_files).not_to be_empty
     expect(files).to include(*exported_files)

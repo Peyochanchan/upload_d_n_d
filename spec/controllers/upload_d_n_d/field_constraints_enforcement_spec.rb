@@ -162,4 +162,40 @@ RSpec.describe 'Transfer of temporary files to the record' do
     expect(user.reload.avatar).not_to be_attached
     expect(UploadDND::TemporaryAttachment.for_session(session_id)).to be_empty
   end
+
+  # F3 : un temporaire forgé vers un attribut NON déclaré uploadable n'est jamais
+  # transféré (et le fichier non légitime est nettoyé).
+  it 'ne transfère pas un fichier temporaire vers un champ non uploadable (F3)' do
+    temporary('internal_file', data: "x") # has_one_attached NON uploadable sur User
+
+    user = perform_enqueued_jobs do
+      User.create!(name: 'New', email: 'new-f3@example.com', temp_upload_session_id: session_id)
+    end
+
+    expect(user.internal_file).not_to be_attached
+    expect(UploadDND::TemporaryAttachment.for_session(session_id)).to be_empty
+  end
+
+  # F3 : un temporaire pour un attribut non demandé par l'app (hors attribute_map)
+  # n'est pas transféré.
+  it 'ne transfère pas un attribut hors de la map demandée (F3)' do
+    user = LimitedUser.create!(name: 'M', email: 'map@example.com')
+    temporary('cover', data: "x") # cover est uploadable mais non demandé ici
+
+    perform_enqueued_jobs { UploadDND::TemporaryAttachment.attach_to_record(session_id, user, { 'avatar' => :avatar }) }
+
+    expect(user.reload.cover).not_to be_attached
+  end
+
+  # F4 : max_files est appliqué AU TRANSFERT (le déplacement par update! ne
+  # relançait pas la validation du modèle).
+  it 'applique max_files au transfert (F4)' do
+    user = LimitedUser.create!(name: 'Max', email: 'max@example.com')
+    3.times { temporary('documents', data: "%PDF", content_type: 'application/pdf', filename: 'd.pdf') }
+
+    perform_enqueued_jobs { UploadDND::TemporaryAttachment.attach_to_record(session_id, user, { 'documents' => :documents }) }
+
+    expect(user.reload.documents.count).to eq(2)
+    expect(UploadDND::TemporaryAttachment.for_session(session_id)).to be_empty
+  end
 end

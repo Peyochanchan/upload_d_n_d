@@ -23,6 +23,7 @@ RSpec.describe UploadDND::JsLink do
     FileUtils.mkdir_p(File.join(dir, 'app/assets/stylesheets/upload_d_n_d'))
     File.write(File.join(dir, 'package.json'), JSON.generate(
       name: 'upload_d_n_d', version: version, type: 'module',
+      style: './styles.css',
       exports: {
         '.' => './app/javascript/upload_d_n_d/index.js',
         './controllers/*' => './app/javascript/upload_d_n_d/controllers/*.js',
@@ -32,6 +33,7 @@ RSpec.describe UploadDND::JsLink do
     File.write(File.join(dir, 'app/javascript/upload_d_n_d/index.js'), "// index v#{version}\n")
     File.write(File.join(dir, 'app/javascript/upload_d_n_d/controllers/uploads_controller.js'), "// uploads\n")
     File.write(File.join(dir, 'app/assets/stylesheets/upload_d_n_d/application.css'), "/* css */\n")
+    File.write(File.join(dir, 'styles.css'), "@import \"./app/assets/stylesheets/upload_d_n_d/application.css\";\n")
     dir
   end
 
@@ -46,6 +48,9 @@ RSpec.describe UploadDND::JsLink do
     expect(File.file?(File.join(dest, 'package.json'))).to be(true)
     expect(File.file?(File.join(dest, 'app/javascript/upload_d_n_d/index.js'))).to be(true)
     expect(File.file?(File.join(dest, 'app/javascript/upload_d_n_d/controllers/uploads_controller.js'))).to be(true)
+    # Les deux fichiers CSS : le styles.css racine (champ `style`, pour Tailwind 3 /
+    # postcss-import) ET l'application.css qu'il importe.
+    expect(File.file?(File.join(dest, 'styles.css'))).to be(true)
     expect(File.file?(File.join(dest, 'app/assets/stylesheets/upload_d_n_d/application.css'))).to be(true)
   end
 

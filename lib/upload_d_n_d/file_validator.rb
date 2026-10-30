@@ -2,9 +2,10 @@
 
 # Validateur de fichiers pour ActiveStorage.
 #
-# Rails associe `validates :avatar, file: {...}` à une constante `FileValidator`.
-# Pour garder l'API ergonomique, on expose `UploadDND::FileValidator` ET on
-# fournit un alias top-level `::FileValidator` si absent.
+# Référencé explicitement par UploadDND::Uploadable#uploadable
+# (`validates_with UploadDND::FileValidator`). On ne définit AUCUN alias
+# top-level `::FileValidator` : il masquerait le validateur d'une app hôte
+# chargé plus tard par Zeitwerk (voir bas de fichier).
 module UploadDND
   class FileValidator < ActiveModel::EachValidator
     def validate_each(record, attribute, value)

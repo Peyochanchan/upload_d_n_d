@@ -42,6 +42,20 @@ RSpec.describe UploadDND::Configuration do
       expect(config.delete_route).to eq(:engine)
     end
 
+    it 'sets default parent_controller to ActionController::Base' do
+      expect(config.parent_controller).to eq("ActionController::Base")
+    end
+
+    it 'sets a default signed_target_expires_in (24h)' do
+      expect(config.signed_target_expires_in).to eq(24.hours)
+    end
+
+    it 'wires the engine base controller to the configured parent (F6)' do
+      # Par défaut ActionController::Base ; une app met "ApplicationController"
+      # (dans un initializer) pour hériter de ses hooks auth/tenant.
+      expect(UploadDND::BaseAttachmentsController.ancestors).to include(ActionController::Base)
+    end
+
     it 'sets default on_file_removed' do
       expect(config.on_file_removed).to be_nil
     end

@@ -11,7 +11,10 @@ module UploadDND
   # - Helpers de rendu (Turbo Streams, JSON, HTML)
   # - Sécurité (CSRF, validation de signature, sanitisation)
   # - Rate limiting (contrôle du taux de requêtes)
-  class BaseAttachmentsController < ActionController::Base
+  # Contrôleur parent configurable (config.parent_controller) : par défaut
+  # ActionController::Base (isolé), ou "ApplicationController" pour hériter des
+  # hooks d'authentification/autorisation/multi-tenant de l'app hôte (F6).
+  class BaseAttachmentsController < UploadDND.configuration.parent_controller.constantize
     # Inclure Pundit si disponible
     include Pundit::Authorization if defined?(Pundit)
 
