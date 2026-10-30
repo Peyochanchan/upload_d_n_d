@@ -18,16 +18,6 @@ module UploadDND
     # Inclure Pundit si disponible
     include Pundit::Authorization if defined?(Pundit)
 
-    # Le moteur fait sa propre autorisation (port adaptateur). Si l'app hôte
-    # (parent_controller = "ApplicationController") a les after_action Pundit
-    # classiques (verify_authorized / verify_policy_scoped), on les retire des
-    # routes du moteur : sinon `index` (qui ne passe pas par Pundit) lèverait
-    # après le rendu → DoubleRenderError. raise: false = sans effet si absents.
-    if defined?(::Pundit)
-      skip_after_action :verify_authorized, raise: false
-      skip_after_action :verify_policy_scoped, raise: false
-    end
-
     # Inclure le rate limiting
     include UploadDND::RateLimiting
 
@@ -39,6 +29,13 @@ module UploadDND
 
     # Authentification (si disponible dans l'app hôte)
     before_action :authenticate_user_if_available!
+
+    # Le moteur fait sa propre autorisation (port adaptateur), pas via la
+    # convention Pundit de l'app hôte. On marque les vérifications Pundit comme
+    # satisfaites : les after_action verify_* de l'hôte passent alors, quel que
+    # soit leur nom (certaines apps les regroupent dans un callback au nom
+    # custom) — sans masquer d'erreur ni dépendre du nom du callback.
+    before_action :satisfy_pundit_verifications if defined?(::Pundit)
 
     # Gestion des erreurs
     # IMPORTANT: rescue_from utilise le "dernier match" -> on déclare StandardError en premier
@@ -224,6 +221,16 @@ module UploadDND
     # Denied, RuleMissing ou ConfigurationError. Fail-closed sans adaptateur.
     def authorize_with_adapter!(subject, action, namespace: nil)
       UploadDND::Authorization.authorize!(self, subject, action, namespace: namespace)
+    end
+
+    # Marque la requête comme « vérifiée » côté Pundit (API officielle), pour que
+    # les after_action verify_authorized / verify_policy_scoped de l'app hôte
+    # passent, indépendamment du nom du callback qui les appelle. Le moteur
+    # applique sa propre autorisation (adaptateur) : ces marqueurs n'affaiblissent
+    # rien, ils neutralisent seulement l'assertion de dev de l'hôte.
+    def satisfy_pundit_verifications
+      skip_policy_scope if respond_to?(:skip_policy_scope)
+      skip_authorization if respond_to?(:skip_authorization)
     end
 
     def render_forbidden
