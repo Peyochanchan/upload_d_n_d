@@ -21,7 +21,7 @@ RSpec.describe 'Temporary attachments across a real session', type: :request do
 
   def upload!(blob)
     post '/upload_d_n_d/temporary_attachments',
-         params: { signed_blob_id: blob.signed_id, attribute_name: 'documents' }.to_json,
+         params: { signed_blob_id: blob.signed_id, target: temp_target_for(User, :documents) }.to_json,
          headers: { 'CONTENT_TYPE' => 'application/json', 'Accept' => 'text/vnd.turbo-stream.html' }
   end
 

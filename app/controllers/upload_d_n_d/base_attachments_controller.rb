@@ -38,6 +38,8 @@ module UploadDND
     before_action :validate_params, only: [ :create ]
     before_action :validate_signed_blob_id_format, only: [ :create ]
     before_action :find_blob, only: [ :create ]
+    # find_target est enregistré par chaque sous-classe (actions distinctes) :
+    # le re-déclarer ici puis dans une sous-classe écraserait ses conditions.
 
     # Déclaré après find_blob (@blob connu) et avant les before_action des
     # sous-classes (autorisation, contraintes), qu'il englobe.
@@ -99,16 +101,10 @@ module UploadDND
     end
 
     def validate_params
-      unless params[:signed_blob_id].present? && params[:attribute_name].present?
-        render_error(I18n.t("upload_d_n_d.errors.missing_params"), :bad_request)
-        return
-      end
+      return if params[:signed_blob_id].present? && params[:target].present?
 
-      # Validation du nom d'attribut (alphanumeric + underscore uniquement)
-      unless params[:attribute_name].match?(ATTRIBUTE_NAME_FORMAT)
-        render_error(I18n.t("upload_d_n_d.errors.invalid_attribute_name"), :bad_request)
-        nil
-      end
+      render_error(I18n.t("upload_d_n_d.errors.missing_params"), :bad_request)
+      nil
     end
 
     def find_blob
@@ -121,6 +117,15 @@ module UploadDND
       nil
     rescue ActiveSupport::MessageVerifier::InvalidSignature
       render_error(I18n.t("upload_d_n_d.errors.invalid_blob_signature"), :unauthorized)
+      nil
+    end
+
+    # Vérifie et décode la cible signée (remplace les record_gid/attribute_name
+    # bruts du client). Toute cible absente ou invalide est refusée.
+    def find_target
+      @target = UploadDND::SignedTarget.verify(params[:target])
+    rescue UploadDND::SignedTarget::Invalid
+      render_error(I18n.t("upload_d_n_d.errors.invalid_field_reference"), :bad_request)
       nil
     end
 
@@ -199,8 +204,8 @@ module UploadDND
 
     # Délègue au port d'autorisation (UploadDND::Authorization) : lève
     # Denied, RuleMissing ou ConfigurationError. Fail-closed sans adaptateur.
-    def authorize_with_adapter!(subject, action)
-      UploadDND::Authorization.authorize!(self, subject, action)
+    def authorize_with_adapter!(subject, action, namespace: nil)
+      UploadDND::Authorization.authorize!(self, subject, action, namespace: namespace)
     end
 
     def render_forbidden

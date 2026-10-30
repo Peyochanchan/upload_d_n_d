@@ -35,7 +35,7 @@ RSpec.describe UploadDND::TemporaryAttachmentsController, type: :controller do
 
   def post_blob
     perform_enqueued_jobs do
-      post :create, params: { signed_blob_id: blob.signed_id, attribute_name: 'documents' }, format: :json
+      post :create, params: { signed_blob_id: blob.signed_id, target: temp_target_for(User, :documents) }, format: :json
     end
   end
 
@@ -67,7 +67,7 @@ RSpec.describe UploadDND::TemporaryAttachmentsController, type: :controller do
     mine.blob.attach(io: StringIO.new("mine"), filename: 'mine.png', content_type: 'image/png')
 
     perform_enqueued_jobs do
-      post :create, params: { signed_blob_id: blob.signed_id, attribute_name: 'avatar' }, format: :json
+      post :create, params: { signed_blob_id: blob.signed_id, target: temp_target_for(User, :avatar) }, format: :json
     end
 
     expect(response).to have_http_status(:unprocessable_content)
@@ -100,9 +100,9 @@ RSpec.describe UploadDND::AttachmentsController, type: :controller do
 
   let(:user) { User.create!(name: 'Test', email: 'test@example.com') }
 
-  def post_blob(attribute_name: 'avatar')
+  def post_blob(attribute: :avatar)
     perform_enqueued_jobs do
-      post :create, params: { signed_blob_id: blob.signed_id, attribute_name: attribute_name, record_gid: user.to_global_id.to_s }, format: :json
+      post :create, params: { signed_blob_id: blob.signed_id, target: signed_target_for(user, attribute) }, format: :json
     end
   end
 
@@ -121,7 +121,7 @@ RSpec.describe UploadDND::AttachmentsController, type: :controller do
     temp = UploadDND::TemporaryAttachment.create!(session_id: 'other', attribute_name: 'documents')
     temp.blob.attach(blob)
 
-    post_blob(attribute_name: 'documents')
+    post_blob(attribute: :documents)
 
     expect(response).to have_http_status(:unprocessable_content)
     expect(user.reload.documents).to be_empty

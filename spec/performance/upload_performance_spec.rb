@@ -43,7 +43,7 @@ RSpec.describe 'Upload Performance',  type: :controller do
         post :create,
              params: {
                signed_blob_id: blob.signed_id,
-               attribute_name: 'documents'
+               target: temp_target_for(User, :documents)
              },
              format: :json
       end
@@ -64,7 +64,7 @@ RSpec.describe 'Upload Performance',  type: :controller do
         post :create,
              params: {
                signed_blob_id: blob.signed_id,
-               attribute_name: 'documents'
+               target: temp_target_for(User, :documents)
              },
              format: :json
       end
@@ -114,7 +114,7 @@ RSpec.describe 'Upload Performance',  type: :controller do
       post :create,
            params: {
              signed_blob_id: new_blob.signed_id,
-             attribute_name: 'avatar'
+             target: temp_target_for(User, :avatar)
            },
            format: :json
 

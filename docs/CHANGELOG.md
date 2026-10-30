@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security (changement de contrat — audit 0.9.4, lot 0.10.0)
+- **Cible d'upload signée** (`UploadDND::SignedTarget`, remplace `UploadDND::FieldReference`) — le dépôt et la suppression sur un record ne reposent plus sur un `record_gid`/`attribute_name`/`namespace` **bruts** fournis par le client. Le composant émet un jeton **signé** (modèle + attribut + record + namespace de policy) ; le contrôleur en déduit la cible et ignore les paramètres bruts. Ferme l'usurpation de record via `GlobalID` non signé, restreint le dépôt aux seuls champs déclarés `uploadable` (un `has_one_attached`/`has_many_attached` quelconque n'est plus ciblable), et transporte le namespace de policy de façon fiable. **Coupure franche** : un client qui n'envoie pas de jeton valide est refusé (`UploadComponent` l'émet automatiquement ; une app met simplement la gem à jour et re-rend ses vues).
+- **Autorisation record fail-closed, avec namespace** — les routes du moteur autorisent sur le record (`:update`) en passant le namespace du jeton (`Admin::RecordPolicy` essayée d'abord, repli sur la policy top-level). Si **aucune** policy n'existe pour le record, la requête est **refusée (403)** (plus de repli sur la policy générique `UploadDNDAttachmentPolicy`), avec un avertissement en log nommant la policy manquante. La garde générique est retirée des routes permanentes (alignement sur le concern legacy et sur CanCanCan) ; le flux temporaire conserve `:upload_d_n_d_temporary_attachment`, désormais fail-closed lui aussi.
+- **Référence de champ obligatoire au dépôt temporaire** — plus de repli silencieux sur les contraintes globales : les limites appliquées sont celles du champ visé par le jeton.
+
 ### Security
 - **Purge de blob restreinte aux requêtes autorisées sur le record** — l'autorisation de purge des blobs refusés n'est plus posée par la policy générique seule. Une requête qui échoue avant la localisation et l'autorisation du record (record absent ou introuvable, 400/404) ne purge plus le blob déposé. Sans ce correctif, un utilisateur disposant du droit générique pouvait forcer la purge d'un blob récent non rattaché dont il connaissait le `signed_id`, via une requête vouée à l'échec. Les blobs réellement orphelins restent nettoyés par la purge des orphelins.
 

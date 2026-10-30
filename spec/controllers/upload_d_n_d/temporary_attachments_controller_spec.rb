@@ -149,7 +149,6 @@ RSpec.describe UploadDND::TemporaryAttachmentsController, type: :controller do
 
     context 'when the authorization policy denies destroy' do
       before do
-        # Pundit n'est pas chargé dans la suite : on simule le refus rendu par authorize_delete!
         allow(controller).to receive(:authorize_delete!) do
           controller.send(:render_error, 'denied', :forbidden)
         end
@@ -168,17 +167,15 @@ RSpec.describe UploadDND::TemporaryAttachmentsController, type: :controller do
   end
 
   describe 'POST #create' do
+    # Cible temporaire : modèle + attribut (pas de record persisté).
+    let(:target) { temp_target_for(User, :avatar) }
+
     context 'with valid params' do
       before do
         request.headers['Accept'] = 'text/vnd.turbo-stream.html'
       end
 
-      let(:valid_params) do
-        {
-          signed_blob_id: blob.signed_id,
-          attribute_name: 'avatar'
-        }
-      end
+      let(:valid_params) { { signed_blob_id: blob.signed_id, target: target } }
 
       it 'creates a temporary attachment' do
         expect {
@@ -189,15 +186,13 @@ RSpec.describe UploadDND::TemporaryAttachmentsController, type: :controller do
       it 'sets the correct session_id' do
         post :create, params: valid_params, format: :turbo_stream
 
-        temp_attachment = UploadDND::TemporaryAttachment.last
-        expect(temp_attachment.session_id).to eq(session_id)
+        expect(UploadDND::TemporaryAttachment.last.session_id).to eq(session_id)
       end
 
-      it 'sets the correct attribute_name' do
+      it 'sets the attribute_name from the signed target' do
         post :create, params: valid_params, format: :turbo_stream
 
-        temp_attachment = UploadDND::TemporaryAttachment.last
-        expect(temp_attachment.attribute_name).to eq('avatar')
+        expect(UploadDND::TemporaryAttachment.last.attribute_name).to eq('avatar')
       end
 
       it 'attaches the blob to the temporary attachment' do
@@ -222,109 +217,84 @@ RSpec.describe UploadDND::TemporaryAttachmentsController, type: :controller do
     end
 
     context 'with invalid params' do
-      it 'returns error when signed_blob_id is missing' do
-        post :create, params: { attribute_name: 'avatar' }, format: :json
+      it 'returns bad_request when signed_blob_id is missing' do
+        post :create, params: { target: target }, format: :json
 
         expect(response).to have_http_status(:bad_request)
         expect(JSON.parse(response.body)['error']).to be_present
       end
 
-      it 'returns error when attribute_name is missing' do
+      it 'returns bad_request when target is missing' do
         post :create, params: { signed_blob_id: blob.signed_id }, format: :json
 
         expect(response).to have_http_status(:bad_request)
         expect(JSON.parse(response.body)['error']).to be_present
       end
 
-      it 'returns error for invalid attribute_name format' do
-        post :create, params: {
-          signed_blob_id: blob.signed_id,
-          attribute_name: 'Invalid-Name!'
-        }, format: :json
+      it 'returns bad_request for a forged / invalid target' do
+        post :create, params: { signed_blob_id: blob.signed_id, target: 'forged' }, format: :json
 
         expect(response).to have_http_status(:bad_request)
-        expect(JSON.parse(response.body)['error']).to include('invalide')
       end
 
-      it 'returns error for invalid blob signature' do
-        post :create, params: {
-          signed_blob_id: 'invalid_signature',
-          attribute_name: 'avatar'
-        }, format: :json
+      it 'returns unauthorized for invalid blob signature' do
+        post :create, params: { signed_blob_id: 'a' * 40, target: target }, format: :json
 
         expect(response).to have_http_status(:unauthorized)
       end
     end
 
     context 'with JSON format' do
-      let(:valid_params) do
-        {
-          signed_blob_id: blob.signed_id,
-          attribute_name: 'avatar'
-        }
-      end
-
       it 'returns JSON response' do
-        post :create, params: valid_params, format: :json
+        post :create, params: { signed_blob_id: blob.signed_id, target: target }, format: :json
 
         expect(response).to have_http_status(:ok)
         expect(JSON.parse(response.body)['status']).to eq('ok')
       end
     end
 
-    context 'with server-side validation' do
-      let(:valid_params) do
-        {
-          signed_blob_id: blob.signed_id,
-          attribute_name: 'avatar'
-        }
-      end
-
-      it 'rejects invalid content types based on configuration' do
-        UploadDND.configure do |config|
-          config.accepted_types = 'image/jpeg'
-        end
-
-        post :create, params: valid_params, format: :json
+    context 'with server-side validation (field constraints from the signed target)' do
+      # documents (LimitedUser) n'accepte que pdf/jpg ; cover retombe sur la
+      # config globale (utile pour le strict_mime_check piloté globalement).
+      it 'rejects an unsupported content type' do
+        post :create, params: { signed_blob_id: blob.signed_id, target: temp_target_for(LimitedUser, :documents) }, format: :json
 
         expect(response).to have_http_status(:unprocessable_entity)
         expect(JSON.parse(response.body)['error']).to include('Type de fichier non accepté')
       end
 
       it 'rejects suspicious types when strict_mime_check is enabled' do
-        # Force la création du blob AVANT le stub Marcel
-        signed_id = blob.signed_id
+        signed_id = ActiveStorage::Blob.create_and_upload!(
+          io: StringIO.new("x"), filename: 'a.png', content_type: 'image/png'
+        ).signed_id
 
-        UploadDND.configure do |config|
-          config.accepted_types = 'image/png,image/jpeg'
-          config.strict_mime_check = true
+        UploadDND.configure do |c|
+          c.accepted_types = 'image/png,image/jpeg'
+          c.strict_mime_check = true
         end
-
-        # Marcel détecte image/jpeg mais le blob déclare image/png → suspicion de spoofing
         allow(Marcel::MimeType).to receive(:for).and_return('image/jpeg')
 
-        post :create, params: { signed_blob_id: signed_id, attribute_name: 'avatar' }, format: :json
+        post :create, params: { signed_blob_id: signed_id, target: temp_target_for(LimitedUser, :cover) }, format: :json
 
         expect(response).to have_http_status(:unprocessable_entity)
         expect(JSON.parse(response.body)['error']).to include('type réel du fichier')
       end
 
       it 'returns a clear error when mime detection fails' do
-        # Force la création du blob AVANT le stub
-        signed_id = blob.signed_id
+        signed_id = ActiveStorage::Blob.create_and_upload!(
+          io: StringIO.new("x"), filename: 'a.png', content_type: 'image/png'
+        ).signed_id
 
-        UploadDND.configure do |config|
-          config.accepted_types = 'image/png'
-          config.strict_mime_check = true
+        UploadDND.configure do |c|
+          c.accepted_types = 'image/png'
+          c.strict_mime_check = true
         end
-
         allow(Marcel::MimeType).to receive(:for).and_raise(StandardError, 'boom')
 
-        post :create, params: { signed_blob_id: signed_id, attribute_name: 'avatar' }, format: :json
+        post :create, params: { signed_blob_id: signed_id, target: temp_target_for(LimitedUser, :cover) }, format: :json
 
         expect(response).to have_http_status(:unprocessable_entity)
         expect(JSON.parse(response.body)['error']).to include('Impossible de vérifier le type de fichier')
-        # Le détail de l'exception reste dans les logs.
         expect(response.body).not_to include('boom')
       end
     end
@@ -377,13 +347,12 @@ RSpec.describe UploadDND::TemporaryAttachmentsController, type: :controller do
   end
 
   describe 'error handling' do
+    let(:target) { temp_target_for(User, :avatar) }
+
     it 'handles ActiveRecord::RecordNotFound' do
       allow(ActiveStorage::Blob).to receive(:find_signed).and_raise(ActiveRecord::RecordNotFound)
 
-      post :create, params: {
-        signed_blob_id: blob.signed_id,
-        attribute_name: 'avatar'
-      }, format: :json
+      post :create, params: { signed_blob_id: blob.signed_id, target: target }, format: :json
 
       expect(response).to have_http_status(:not_found)
     end
@@ -391,10 +360,7 @@ RSpec.describe UploadDND::TemporaryAttachmentsController, type: :controller do
     it 'handles StandardError gracefully' do
       allow(UploadDND::TemporaryAttachment).to receive(:create!).and_raise(StandardError, "Test error")
 
-      post :create, params: {
-        signed_blob_id: blob.signed_id,
-        attribute_name: 'avatar'
-      }, format: :json
+      post :create, params: { signed_blob_id: blob.signed_id, target: target }, format: :json
 
       expect(response).to have_http_status(:internal_server_error)
       expect(JSON.parse(response.body)['error']).to include('erreur')
@@ -405,10 +371,7 @@ RSpec.describe UploadDND::TemporaryAttachmentsController, type: :controller do
         ActiveRecord::RecordInvalid.new(UploadDND::TemporaryAttachment.new)
       )
 
-      post :create, params: {
-        signed_blob_id: blob.signed_id,
-        attribute_name: 'avatar'
-      }, format: :json
+      post :create, params: { signed_blob_id: blob.signed_id, target: target }, format: :json
 
       expect(response).to have_http_status(:unprocessable_content)
     end

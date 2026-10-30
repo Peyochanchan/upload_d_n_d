@@ -5,8 +5,12 @@ class User < ActiveRecord::Base
   self.table_name = 'users'
   include UploadDND::Uploadable if defined?(UploadDND::Uploadable)
 
-  has_one_attached :avatar
-  has_many_attached :documents
+  uploadable :avatar
+  uploadable :documents, multiple: true
+
+  # Attachment NON déclaré `uploadable` : sert à vérifier le refus (F3) — un
+  # has_one_attached quelconque ne doit pas être ciblable par la gem.
+  has_one_attached :internal_file
 end
 
 # Namespace Admin
@@ -15,7 +19,7 @@ module Admin
     self.table_name = 'admin_articles'
     include UploadDND::Uploadable if defined?(UploadDND::Uploadable)
 
-    has_many_attached :images
+    uploadable :images, multiple: true
   end
 end
 
@@ -25,7 +29,7 @@ module Manager
     self.table_name = 'manager_reports'
     include UploadDND::Uploadable if defined?(UploadDND::Uploadable)
 
-    has_one_attached :pdf_file
+    uploadable :pdf_file
   end
 end
 

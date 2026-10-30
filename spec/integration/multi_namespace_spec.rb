@@ -132,34 +132,26 @@ RSpec.describe 'Multi-namespace support', type: :integration do
     let(:article) { Admin::Article.create!(title: 'Test Article') }
     let(:report) { Manager::Report.create!(title: 'Test Report') }
 
-    it 'génère le record_gid pour un modèle sans namespace' do
-      component = UploadDND::UploadComponent.new(
-        attribute_name: :avatar,
-        record: user
-      )
+    it 'génère une cible signée pour un modèle sans namespace' do
+      component = UploadDND::UploadComponent.new(attribute_name: :avatar, record: user)
 
-      expect(component.record_gid).to be_present
-      expect(component.record_gid).to include('User')
+      target = UploadDND::SignedTarget.verify(component.signed_target)
+      expect(target.model_class).to eq(User)
+      expect(target.record_id).to eq(user.id)
     end
 
-    it 'génère le record_gid pour un modèle Admin' do
-      component = UploadDND::UploadComponent.new(
-        attribute_name: :images,
-        record: article
-      )
+    it 'génère une cible signée pour un modèle Admin' do
+      component = UploadDND::UploadComponent.new(attribute_name: :images, record: article)
 
-      expect(component.record_gid).to be_present
-      expect(component.record_gid).to include('Admin::Article')
+      target = UploadDND::SignedTarget.verify(component.signed_target)
+      expect(target.model_class).to eq(Admin::Article)
     end
 
-    it 'génère le record_gid pour un modèle Manager' do
-      component = UploadDND::UploadComponent.new(
-        attribute_name: :pdf_file,
-        record: report
-      )
+    it 'génère une cible signée pour un modèle Manager' do
+      component = UploadDND::UploadComponent.new(attribute_name: :pdf_file, record: report)
 
-      expect(component.record_gid).to be_present
-      expect(component.record_gid).to include('Manager::Report')
+      target = UploadDND::SignedTarget.verify(component.signed_target)
+      expect(target.model_class).to eq(Manager::Report)
     end
 
     it 'génère attach_path correct sans namespace' do

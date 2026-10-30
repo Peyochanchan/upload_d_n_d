@@ -34,11 +34,7 @@ RSpec.describe UploadDND::AttachmentsController, type: :controller do
       end
 
       let(:valid_params) do
-        {
-          signed_blob_id: blob.signed_id,
-          attribute_name: 'avatar',
-          record_gid: user.to_global_id.to_s
-        }
+        { signed_blob_id: blob.signed_id, target: signed_target_for(user, :avatar) }
       end
 
       it 'attaches the blob to the record' do
@@ -77,12 +73,7 @@ RSpec.describe UploadDND::AttachmentsController, type: :controller do
       end
 
       let(:valid_params) do
-        {
-          signed_blob_id: blob.signed_id,
-          attribute_name: 'documents',
-          record_gid: user.to_global_id.to_s,
-          multiple: 'true'
-        }
+        { signed_blob_id: blob.signed_id, target: signed_target_for(user, :documents) }
       end
 
       it 'attaches the blob to the collection' do
@@ -93,103 +84,69 @@ RSpec.describe UploadDND::AttachmentsController, type: :controller do
     end
 
     context 'with invalid params' do
-      it 'returns error when record_gid is missing' do
-        post :create, params: {
-          signed_blob_id: blob.signed_id,
-          attribute_name: 'avatar'
-        }, format: :json
-
-        expect(response).to have_http_status(:bad_request)
-        expect(JSON.parse(response.body)['error']).to include('record_gid')
-        expect(JSON.parse(response.body)['error']).to include('temporary_attachments')
-      end
-
-      it 'returns error when signed_blob_id is missing' do
-        post :create, params: {
-          attribute_name: 'avatar',
-          record_gid: user.to_global_id.to_s
-        }, format: :json
+      it 'returns bad_request when target is missing' do
+        post :create, params: { signed_blob_id: blob.signed_id }, format: :json
 
         expect(response).to have_http_status(:bad_request)
         expect(JSON.parse(response.body)['error']).to be_present
       end
 
-      it 'returns error when attribute_name is missing' do
-        post :create, params: {
-          signed_blob_id: blob.signed_id,
-          record_gid: user.to_global_id.to_s
-        }, format: :json
+      it 'returns bad_request when signed_blob_id is missing' do
+        post :create, params: { target: signed_target_for(user, :avatar) }, format: :json
 
         expect(response).to have_http_status(:bad_request)
         expect(JSON.parse(response.body)['error']).to be_present
       end
 
-      it 'returns error for invalid attribute_name format' do
-        post :create, params: {
-          signed_blob_id: blob.signed_id,
-          attribute_name: 'Invalid-Name!',
-          record_gid: user.to_global_id.to_s
-        }, format: :json
+      it 'returns bad_request for a forged / invalid target' do
+        post :create, params: { signed_blob_id: blob.signed_id, target: 'forged.token.value' }, format: :json
 
         expect(response).to have_http_status(:bad_request)
-        expect(JSON.parse(response.body)['error']).to include('invalide')
       end
 
-      it 'returns error for invalid blob signature' do
+      it 'returns unauthorized for invalid blob signature' do
         post :create, params: {
-          signed_blob_id: 'invalid_signature',
-          attribute_name: 'avatar',
-          record_gid: user.to_global_id.to_s
+          signed_blob_id: 'a' * 40, target: signed_target_for(user, :avatar)
         }, format: :json
 
         expect(response).to have_http_status(:unauthorized)
       end
 
-      it 'returns error when record does not exist' do
-        post :create, params: {
-          signed_blob_id: blob.signed_id,
-          attribute_name: 'avatar',
-          record_gid: 'gid://app/User/99999'
-        }, format: :json
+      it 'returns not_found when the signed record does not exist' do
+        target = UploadDND::SignedTarget.generate(User, :avatar, record_id: 99_999)
+        post :create, params: { signed_blob_id: blob.signed_id, target: target }, format: :json
 
         expect(response).to have_http_status(:not_found)
-        expect(JSON.parse(response.body)['error']).to eq(I18n.t('upload_d_n_d.errors.blob_not_found'))
       end
 
-      it 'returns error when attribute does not exist on record' do
-        post :create, params: {
-          signed_blob_id: blob.signed_id,
-          attribute_name: 'nonexistent_attribute',
-          record_gid: user.to_global_id.to_s
-        }, format: :json
+      # F3 : un attribut non déclaré `uploadable` ne peut pas être ciblé — le
+      # jeton est rejeté à la vérification (400), le record n'est pas touché.
+      it 'refuses a token for a non-uploadable attachment (400)' do
+        target = UploadDND::SignedTarget.generate(User, :internal_file)
+        post :create, params: { signed_blob_id: blob.signed_id, target: target }, format: :json
 
-        expect(response).to have_http_status(:unprocessable_content)
-        expect(JSON.parse(response.body)['error']).to eq(I18n.t('upload_d_n_d.errors.invalid_attribute', attribute: 'nonexistent_attribute'))
+        expect(response).to have_http_status(:bad_request)
+        expect(user.reload.internal_file).not_to be_attached
       end
 
       # SÉCURITÉ : attribute_name ne doit jamais servir à appeler une méthode
-      # quelconque sur le record (respond_to? + send laissait passer destroy).
+      # quelconque sur le record. Un jeton pour une telle « méthode » n'est pas
+      # un attribut `uploadable` et est refusé à la vérification.
       %w[destroy delete touch reload email].each do |method_name|
-        it "refuses #{method_name} (not an attachment) without calling it" do
+        it "refuses #{method_name} (not an uploadable attribute) without calling it" do
           expect_any_instance_of(User).not_to receive(method_name)
 
-          post :create, params: {
-            signed_blob_id: blob.signed_id,
-            attribute_name: method_name,
-            record_gid: user.to_global_id.to_s
-          }, format: :json
+          target = UploadDND::SignedTarget.generate(User, method_name)
+          post :create, params: { signed_blob_id: blob.signed_id, target: target }, format: :json
 
-          expect(response).to have_http_status(:unprocessable_content)
+          expect(response).to have_http_status(:bad_request)
           expect(User.exists?(user.id)).to be true
         end
       end
 
-      it 'does not render the files list of the record when the attribute is refused' do
-        post :create, params: {
-          signed_blob_id: blob.signed_id,
-          attribute_name: 'destroy',
-          record_gid: user.to_global_id.to_s
-        }, format: :turbo_stream
+      it 'does not render the files list when the target is refused' do
+        target = UploadDND::SignedTarget.generate(User, :internal_file)
+        post :create, params: { signed_blob_id: blob.signed_id, target: target }, format: :turbo_stream
 
         expect(response.body).not_to include('udnd_files_list')
       end
@@ -205,16 +162,16 @@ RSpec.describe UploadDND::AttachmentsController, type: :controller do
       end
 
       let(:valid_params) do
-        { signed_blob_id: blob.signed_id, attribute_name: 'avatar', record_gid: user.to_global_id.to_s }
+        { signed_blob_id: blob.signed_id, target: signed_target_for(user, :avatar) }
       end
 
-      it 'checks the gem policy (create?) then the record policy (update?)' do
+      it 'authorizes on the record policy (update?) only' do
         calls = []
         controller.singleton_class.define_method(:authorize) { |target, query| calls << [ target, query ] }
 
         post :create, params: valid_params, format: :turbo_stream
 
-        expect(calls).to eq([ [ :upload_d_n_d_attachment, :create? ], [ user, :update? ] ])
+        expect(calls).to eq([ [ user, :update? ] ])
         expect(user.reload.avatar).to be_attached
       end
 
@@ -230,25 +187,23 @@ RSpec.describe UploadDND::AttachmentsController, type: :controller do
         expect(user.reload.avatar).not_to be_attached
       end
 
-      it 'relies on the gem policy alone when the record has no policy' do
+      # Fail-closed : pas de policy pour le record → refus (plus de repli sur
+      # une policy générique).
+      it 'denies (403) and attaches nothing when the record has no policy' do
         controller.singleton_class.define_method(:authorize) do |target, _query|
           raise Pundit::NotDefinedError if target.is_a?(User)
         end
 
         post :create, params: valid_params, format: :turbo_stream
 
-        expect(response).to have_http_status(:ok)
-        expect(user.reload.avatar).to be_attached
+        expect(response).to have_http_status(:forbidden)
+        expect(user.reload.avatar).not_to be_attached
       end
     end
 
     context 'with JSON format' do
       let(:valid_params) do
-        {
-          signed_blob_id: blob.signed_id,
-          attribute_name: 'avatar',
-          record_gid: user.to_global_id.to_s
-        }
+        { signed_blob_id: blob.signed_id, target: signed_target_for(user, :avatar) }
       end
 
       it 'returns JSON response' do
@@ -269,9 +224,7 @@ RSpec.describe UploadDND::AttachmentsController, type: :controller do
 
       it 'returns validation error' do
         post :create, params: {
-          signed_blob_id: blob.signed_id,
-          attribute_name: 'avatar',
-          record_gid: user.to_global_id.to_s
+          signed_blob_id: blob.signed_id, target: signed_target_for(user, :avatar)
         }, format: :json
 
         expect(response).to have_http_status(:unprocessable_content)
@@ -288,11 +241,7 @@ RSpec.describe UploadDND::AttachmentsController, type: :controller do
 
     let(:attachment) { user.avatar_attachment }
     let(:valid_params) do
-      {
-        id: attachment.id,
-        record_gid: user.to_global_id.to_s,
-        attribute_name: 'avatar'
-      }
+      { id: attachment.id, target: signed_target_for(user, :avatar) }
     end
 
     it 'detaches the file from the record' do
@@ -328,36 +277,37 @@ RSpec.describe UploadDND::AttachmentsController, type: :controller do
         other_user.avatar.attach(other_blob)
 
         delete :destroy, params: {
-          id: other_user.avatar_attachment.id,
-          record_gid: user.to_global_id.to_s,
-          attribute_name: 'avatar'
+          id: other_user.avatar_attachment.id, target: signed_target_for(user, :avatar)
         }, format: :json
 
         expect(response).to have_http_status(:not_found)
         expect(other_user.reload.avatar.attached?).to be true
       end
 
-      it 'refuses when attribute_name does not match the attachment' do
-        delete :destroy, params: valid_params.merge(attribute_name: 'documents'), format: :json
+      it 'refuses when the target attribute does not match the attachment' do
+        delete :destroy, params: {
+          id: attachment.id, target: signed_target_for(user, :documents)
+        }, format: :json
 
         expect(response).to have_http_status(:not_found)
         expect(user.reload.avatar.attached?).to be true
       end
 
-      it 'returns not_found when the record does not exist' do
-        delete :destroy, params: valid_params.merge(record_gid: 'gid://dummy/User/99999'), format: :json
+      it 'returns not_found when the signed record does not exist' do
+        target = UploadDND::SignedTarget.generate(User, :avatar, record_id: 99_999)
+        delete :destroy, params: { id: attachment.id, target: target }, format: :json
 
         expect(response).to have_http_status(:not_found)
       end
 
-      it 'returns bad_request when record_gid is missing' do
-        delete :destroy, params: { id: attachment.id, attribute_name: 'avatar' }, format: :json
+      it 'returns bad_request when target is missing' do
+        delete :destroy, params: { id: attachment.id }, format: :json
 
         expect(response).to have_http_status(:bad_request)
       end
 
-      it 'returns bad_request for invalid attribute_name format' do
-        delete :destroy, params: valid_params.merge(attribute_name: 'Invalid-Name!'), format: :json
+      it 'returns bad_request for a forged / invalid target' do
+        delete :destroy, params: { id: attachment.id, target: 'forged' }, format: :json
 
         expect(response).to have_http_status(:bad_request)
       end
@@ -371,7 +321,7 @@ RSpec.describe UploadDND::AttachmentsController, type: :controller do
         UploadDND.configure { |config| config.authorization_adapter = :pundit }
       end
 
-      it 'authorizes via the record policy (update?)' do
+      it 'authorizes via the record policy (update?) only' do
         calls = []
         controller.singleton_class.define_method(:authorize) { |target, query| calls << [ target, query ] }
 
@@ -380,16 +330,16 @@ RSpec.describe UploadDND::AttachmentsController, type: :controller do
         expect(calls).to eq([ [ user, :update? ] ])
       end
 
-      it 'falls back to the gem policy when the record has no policy' do
-        calls = []
-        controller.singleton_class.define_method(:authorize) do |target, query|
-          calls << [ target, query ]
+      # Fail-closed : pas de policy pour le record → refus, fichier conservé.
+      it 'denies (403) and keeps the file when the record has no policy' do
+        controller.singleton_class.define_method(:authorize) do |target, _query|
           raise Pundit::NotDefinedError if target.is_a?(User)
         end
 
-        delete :destroy, params: valid_params, format: :turbo_stream
+        delete :destroy, params: valid_params, format: :json
 
-        expect(calls).to eq([ [ user, :update? ], [ :upload_d_n_d_attachment, :destroy? ] ])
+        expect(response).to have_http_status(:forbidden)
+        expect(user.reload.avatar.attached?).to be true
       end
 
       it 'renders forbidden and keeps the file when not authorized' do
@@ -406,25 +356,21 @@ RSpec.describe UploadDND::AttachmentsController, type: :controller do
   end
 
   describe 'error handling' do
-    it 'handles ActiveRecord::RecordNotFound' do
+    it 'handles ActiveRecord::RecordNotFound from the blob lookup' do
       allow(ActiveStorage::Blob).to receive(:find_signed).and_raise(ActiveRecord::RecordNotFound)
 
       post :create, params: {
-        signed_blob_id: blob.signed_id,
-        attribute_name: 'avatar',
-        record_gid: user.to_global_id.to_s
+        signed_blob_id: blob.signed_id, target: signed_target_for(user, :avatar)
       }, format: :json
 
       expect(response).to have_http_status(:not_found)
     end
 
-    it 'handles StandardError gracefully' do
-      allow(GlobalID::Locator).to receive(:locate).and_raise(StandardError, "Test error")
+    it 'handles an unexpected error gracefully (500)' do
+      allow(User).to receive(:find).and_raise(StandardError, "Test error")
 
       post :create, params: {
-        signed_blob_id: blob.signed_id,
-        attribute_name: 'avatar',
-        record_gid: user.to_global_id.to_s
+        signed_blob_id: blob.signed_id, target: signed_target_for(user, :avatar)
       }, format: :json
 
       expect(response).to have_http_status(:internal_server_error)
@@ -437,9 +383,7 @@ RSpec.describe UploadDND::AttachmentsController, type: :controller do
       )
 
       post :create, params: {
-        signed_blob_id: blob.signed_id,
-        attribute_name: 'avatar',
-        record_gid: user.to_global_id.to_s
+        signed_blob_id: blob.signed_id, target: signed_target_for(user, :avatar)
       }, format: :json
 
       expect(response).to have_http_status(:unprocessable_content)
