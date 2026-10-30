@@ -21,6 +21,7 @@ module UploadDND
                   :on_upload_error,
                   :on_file_removed,
                   :delete_route,
+                  :signed_target_expires_in,
                   :rate_limit_enabled,
                   :rate_limit_max_requests,
                   :rate_limit_period
@@ -61,6 +62,11 @@ module UploadDND
       #   de l'app (concern Controllers::Uploadable) — nécessite une route
       #   polymorphique pour le record (cf. README, "Records imbriqués").
       @delete_route = :engine
+      # Durée de vie des jetons de cible signée (SignedTarget). nil = pas
+      # d'expiration. 24h par défaut : assez long pour un onglet de formulaire
+      # laissé ouvert, assez court pour limiter la portée d'une fuite de jeton.
+      # L'autorisation reste revérifiée à chaque requête quoi qu'il arrive.
+      @signed_target_expires_in = 24.hours
       @rate_limit_enabled = false
       @rate_limit_max_requests = 10
       @rate_limit_period = 60 # secondes

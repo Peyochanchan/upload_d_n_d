@@ -37,9 +37,9 @@ module UploadDND
         :updated
       elsif File.directory?(dest)
         return :conflict unless ours?(dest) # dossier étranger : on n'y touche jamais
-        return :unchanged if same_version?(source, dest)
+        return :unchanged if up_to_date?(source, dest)
 
-        replace(source, dest) # notre copie, version périmée
+        replace(source, dest) # notre copie, contenu périmé
         :updated
       elsif File.exist?(dest)
         :conflict # fichier étranger
@@ -58,11 +58,16 @@ module UploadDND
     end
     private_class_method :ours?
 
-    def same_version?(source, dest)
-      read_json(File.join(source, "package.json"))["version"] ==
-        read_json(File.join(dest, "package.json"))["version"]
+    # Compare le CONTENU (pas seulement la version du package.json) : une gem
+    # branchée en `path:`/`git:` peut garder la même version tout en changeant le
+    # JS. La copie est à jour si chaque fichier attendu existe et est identique.
+    def up_to_date?(source, dest)
+      package_files(source).all? do |rel|
+        target = File.join(dest, rel)
+        File.file?(target) && FileUtils.identical?(File.join(source, rel), target)
+      end
     end
-    private_class_method :same_version?
+    private_class_method :up_to_date?
 
     def replace(source, dest)
       FileUtils.remove_entry(dest)

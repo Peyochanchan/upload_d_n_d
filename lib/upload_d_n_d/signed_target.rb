@@ -33,11 +33,18 @@ module UploadDND
     end
 
     class << self
+      # Construit un jeton directement depuis une instance de record (persistée
+      # ou non). Pratique pour les vues, helpers et specs d'apps hôtes :
+      #   UploadDND::SignedTarget.for(@document, :file, namespace: :admin)
+      def for(record, attribute, namespace: nil)
+        generate(record.class, attribute, record_id: (record.id if record.persisted?), namespace: namespace)
+      end
+
       # @param record_id [Object, nil] id du record (nil pour une cible temporaire)
       # @param namespace [Array<Symbol>, nil] namespace de policy
       def generate(model_class, attribute, record_id: nil, namespace: nil)
         payload = [ model_class.name, attribute.to_s, record_id, Array(namespace).map(&:to_s).presence ]
-        verifier.generate(payload, purpose: PURPOSE)
+        verifier.generate(payload, purpose: PURPOSE, expires_in: UploadDND.configuration.signed_target_expires_in)
       end
 
       # @raise [Invalid] signature fausse, charge malformée, modèle inconnu, ou

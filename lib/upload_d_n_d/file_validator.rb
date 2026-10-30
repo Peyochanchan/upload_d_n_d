@@ -152,5 +152,7 @@ module UploadDND
   end
 end
 
-# Alias top-level pour l'API `validates ..., file: ...`
-::FileValidator = UploadDND::FileValidator unless defined?(::FileValidator)
+# Pas d'alias top-level `::FileValidator` : il masquerait silencieusement le
+# FileValidator d'une app hôte (chargé plus tard par Zeitwerk), désactivant ses
+# propres validations. `uploadable` référence `UploadDND::FileValidator`
+# explicitement (voir UploadDND::Uploadable#uploadable).

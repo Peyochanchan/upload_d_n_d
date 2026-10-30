@@ -34,5 +34,10 @@ RSpec.describe UploadDND::MimeTypes do
       expect(described_class.to_extensions([ "application/x-totalement-inconnu" ]))
         .to eq("application/x-totalement-inconnu")
     end
+
+    it "normalise les types MIME non standard (image/jpg -> .jpg,.jpeg)" do
+      expect(described_class.to_extensions([ "image/jpg" ])).to eq(".jpg,.jpeg")
+      expect(described_class.to_extensions([ "image/jpg", "image/png" ])).to eq(".jpg,.jpeg,.png")
+    end
   end
 end

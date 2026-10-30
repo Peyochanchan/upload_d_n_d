@@ -63,6 +63,16 @@ RSpec.describe UploadDND::JsLink do
     expect(dest_version).to eq('0.9.4')
   end
 
+  it 'rafraîchit la copie quand le contenu change à version identique' do
+    src = make_source(version: '0.10.0')
+    described_class.sync(source: src, dest: dest)
+
+    File.write(File.join(src, 'app/javascript/upload_d_n_d/index.js'), "// modifié\n")
+
+    expect(described_class.sync(source: src, dest: dest)).to eq(:updated)
+    expect(File.read(File.join(dest, 'app/javascript/upload_d_n_d/index.js'))).to eq("// modifié\n")
+  end
+
   it 'remplace un ancien lien symbolique (gem <= 0.9.3) par une copie' do
     gem_dir = make_source(version: '0.9.4')
     FileUtils.mkdir_p(File.dirname(dest))

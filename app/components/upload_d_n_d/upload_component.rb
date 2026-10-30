@@ -61,12 +61,7 @@ module UploadDND
               "déclarez-le avec `uploadable :#{attribute_name}, ...`."
       end
 
-      UploadDND::SignedTarget.generate(
-        model_class,
-        attribute_name,
-        record_id: (record.id if record.persisted?),
-        namespace: namespace
-      )
+      UploadDND::SignedTarget.for(record, attribute_name, namespace: namespace)
     end
 
     def model_name

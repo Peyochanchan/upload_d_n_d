@@ -9,12 +9,16 @@ RSpec.describe UploadDND::Generators::InstallGenerator, type: :generator do
   describe "STALE_OVERRIDES" do
     let(:stale_overrides) { described_class.const_get(:STALE_OVERRIDES) }
 
-    it "includes pre-0.4.0 stale files (concerns)" do
+    it "includes stale concern copies" do
       expect(stale_overrides).to include(
         "app/models/concerns/upload_d_n_d/uploadable.rb",
         "app/controllers/concerns/upload_d_n_d/controllers/uploadable.rb",
-        "app/validators/file_validator.rb"
+        "app/controllers/concerns/upload_d_n_d/upload_authorization.rb"
       )
+    end
+
+    it "does not treat the host app's own FileValidator as stale" do
+      expect(stale_overrides).not_to include("app/validators/file_validator.rb")
     end
 
     it "includes pre-0.5.0 stale files (JS, CSS, Component)" do
@@ -87,8 +91,8 @@ RSpec.describe UploadDND::Generators::InstallGenerator, type: :generator do
   describe "templates" do
     let(:templates_path) { File.expand_path("../../../lib/generators/upload_d_n_d/templates", __dir__) }
 
-    it "has the authorization concern template" do
-      expect(File.exist?(File.join(templates_path, "concerns/upload_authorization.rb"))).to be true
+    it "no longer ships the dead authorization concern template" do
+      expect(File.exist?(File.join(templates_path, "concerns/upload_authorization.rb"))).to be false
     end
 
     it "has the helper template" do

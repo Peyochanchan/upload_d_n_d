@@ -1,6 +1,6 @@
 ===============================================================================
 
-  UploadDND v0.5.0 installé avec succès !
+  UploadDND installé avec succès !
 
 ===============================================================================
 
@@ -15,48 +15,50 @@ Prochaines étapes :
      rails active_storage:install
      rails db:migrate
 
-  3. Ajouter l'import JavaScript dans votre application.js :
+  3. JavaScript — importer le module de la gem dans votre application.js :
 
      import "upload_d_n_d"
 
      Les contrôleurs Stimulus sont auto-enregistrés depuis la gem.
 
-  4. Ajouter le CSS dans votre layout :
+     - jsbundling (esbuild/bun) : la tâche upload_d_n_d:link_js copie le JS de la
+       gem dans node_modules/upload_d_n_d ; elle tourne automatiquement sur
+       `rails javascript:build` (et `assets:precompile` au déploiement). Après une
+       montée de version de la gem, lancer une fois `rails javascript:build` en
+       local (un serveur en watch ne déclenche pas la tâche).
+     - importmap : les pins de la gem sont ajoutés automatiquement.
 
-     <%= stylesheet_link_tag "upload_d_n_d/application", media: "all" %>
+  4. CSS :
 
-  5. (Optionnel) Configurer les policies Pundit :
+     - Tailwind / bundler CSS :   @import "upload_d_n_d/styles";
+     - Sprockets / asset pipeline : <%= stylesheet_link_tag "upload_d_n_d/application", media: "all" %>
 
-     rails generate upload_d_n_d:policy
+  5. Autorisation (Pundit ou CanCanCan) — fail-closed :
 
-     Ceci génère les deux policies :
-       - app/policies/upload_d_n_d_temporary_attachment_policy.rb
-       - app/policies/upload_d_n_d_attachment_policy.rb
+     Chaque modèle qui expose un champ `uploadable` doit avoir une policy pour le
+     record (ex. ProjectPolicy#update?). Sans policy, les dépôts/suppressions sont
+     refusés (403). Pour un espace admin, passez le namespace au helper :
 
-  6. Utiliser le générateur de modèle (recommandé) :
+       <%= upload_field :documents, record: @document, namespace: :admin %>
+
+     ce qui autorise via Admin::DocumentPolicy. Générateur de policies génériques :
+
+       rails generate upload_d_n_d:policy
+
+  6. Déclarer le champ sur le modèle (recommandé via le générateur) :
 
      rails g upload_d_n_d:model User --attribute=avatar
      rails g upload_d_n_d:model Project --attribute=documents --multiple --content_type=pdf docx xlsx
 
-  7. Utiliser dans vos vues :
+  7. Utiliser dans vos vues (un record: est requis, même une instance neuve) :
 
      <%= upload_field :avatar, record: @user %>
 
-  8. Architecture v0.5.0 :
+  Tout le reste (concerns, FileValidator, contrôleurs Stimulus, CSS, ViewComponent)
+  est servi depuis la gem : un `bundle update` suffit pour mettre à jour.
 
-     Tout est servi directement depuis la gem :
-       - UploadDND::Uploadable          (model concern)
-       - UploadDND::Controllers::Uploadable (controller concern)
-       - UploadDND::FileValidator        (file validation)
-       - Contrôleurs Stimulus            (auto-enregistrés via importmap)
-       - CSS                             (servi via asset pipeline)
-       - ViewComponent                   (servi depuis la gem)
-
-     Un simple `bundle update` suffit pour tout mettre à jour.
-
-     Fichiers personnalisables (copiés dans votre app) :
-       - app/controllers/concerns/upload_d_n_d/upload_authorization.rb
-       - app/helpers/upload_d_n_d/upload_helper.rb
-       - config/initializers/upload_d_n_d.rb
+  Fichiers personnalisables copiés dans votre app :
+    - app/helpers/upload_d_n_d/upload_helper.rb
+    - config/initializers/upload_d_n_d.rb
 
 ===============================================================================

@@ -41,19 +41,11 @@ module UploadDND
       end
 
       def copy_concerns
-        say "Installation des concerns...", :green
+        say "Les concerns (Uploadable, Controllers::Uploadable, FileValidator) " \
+            "sont fournis par le runtime de la gem (lib/) — rien à copier.", :green
 
-        # Les concerns critiques (Uploadable, Controllers::Uploadable, FileValidator)
-        # sont désormais fournis par le runtime de la gem (lib/).
-        # Seul upload_authorization reste un template car il est personnalisable.
-        say "  ✓ UploadDND::Uploadable         → fourni par la gem (lib/)", :cyan
-        say "  ✓ UploadDND::Controllers::Uploadable → fourni par la gem (lib/)", :cyan
-        say "  ✓ UploadDND::FileValidator       → fourni par la gem (lib/)", :cyan
-
-        template "concerns/upload_authorization.rb",
-                 "app/controllers/concerns/upload_d_n_d/upload_authorization.rb"
-
-        # Nettoyage : supprime les anciennes copies si elles existent (migration depuis v0.3.x)
+        # Nettoyage : supprime les anciennes copies si elles existent (migration
+        # depuis les versions qui copiaient des concerns dans l'app).
         remove_stale_overrides
       end
 
@@ -132,11 +124,15 @@ module UploadDND
 
       # Supprime les fichiers qui étaient copiés par les anciennes versions (< 0.4.0)
       # et qui shadowent désormais le runtime de la gem.
+      # Anciennes copies désormais servies par le runtime de la gem. On n'y met
+      # PAS app/validators/file_validator.rb : une app hôte peut légitimement
+      # avoir son propre FileValidator, et la gem n'en fournit plus de global.
       STALE_OVERRIDES = [
         "app/models/concerns/upload_d_n_d/uploadable.rb",
         "app/controllers/concerns/upload_d_n_d/controllers/uploadable.rb",
-        "app/validators/file_validator.rb",
-        # Fichiers copiés par les versions < 0.5.0 (désormais servis depuis la gem)
+        # Concern d'autorisation devenu inutile (autorisation via le port adaptateur).
+        "app/controllers/concerns/upload_d_n_d/upload_authorization.rb",
+        # Fichiers copiés par les anciennes versions (désormais servis depuis la gem)
         "app/javascript/controllers/upload_d_n_d/uploads_controller.js",
         "app/javascript/controllers/upload_d_n_d/preview_controller.js",
         "app/assets/stylesheets/upload_d_n_d.css",

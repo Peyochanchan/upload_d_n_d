@@ -52,8 +52,12 @@ module UploadDND
           end
         end
 
-        validates attribute_name,
-                  file: options.slice(:content_type, :max_size, :max_files, :message, :strict_mime_check, :spoofing_message)
+        # On référence UploadDND::FileValidator explicitement (plutôt que la clé
+        # `file:`, qui résout un `::FileValidator` global et masquerait le
+        # validateur de l'app hôte).
+        validates_with UploadDND::FileValidator,
+                       attributes: [ attribute_name ],
+                       **options.slice(:content_type, :max_size, :max_files, :message, :strict_mime_check, :spoofing_message)
 
         # Stocke les options pour usage ultérieur (ViewComponent, helpers, etc.)
         (@uploadable_attributes ||= {})[attribute_name] = options

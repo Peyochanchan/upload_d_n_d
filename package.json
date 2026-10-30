@@ -1,13 +1,15 @@
 {
     "name": "upload_d_n_d",
-    "version": "0.9.4",
+    "version": "0.10.0",
     "type": "module",
     "main": "app/javascript/upload_d_n_d/index.js",
+    "style": "./app/assets/stylesheets/upload_d_n_d/application.css",
     "exports": {
         ".": "./app/javascript/upload_d_n_d/index.js",
         "./controllers/*": "./app/javascript/upload_d_n_d/controllers/*.js",
         "./styles": {
-            "style": "./app/assets/stylesheets/upload_d_n_d/application.css"
+            "style": "./app/assets/stylesheets/upload_d_n_d/application.css",
+            "default": "./app/assets/stylesheets/upload_d_n_d/application.css"
         }
     },
     "dependencies": {

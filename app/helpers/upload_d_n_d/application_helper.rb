@@ -20,9 +20,7 @@ module UploadDND
       else
         # Jeton régénéré côté serveur : il survit aux re-rendus Turbo Stream du
         # partial (les boutons de suppression portent toujours une cible valide).
-        token = UploadDND::SignedTarget.generate(
-          record.class, attribute_name, record_id: record.id, namespace: namespace
-        )
+        token = UploadDND::SignedTarget.for(record, attribute_name, namespace: namespace)
         UploadDND::Engine.routes.url_helpers.attachment_path(attachment.id, target: token)
       end
     end
